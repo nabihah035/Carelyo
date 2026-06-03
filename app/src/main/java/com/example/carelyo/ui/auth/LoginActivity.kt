@@ -37,10 +37,12 @@ class LoginActivity : AppCompatActivity() {
 
         binding.btnLogin.setOnClickListener {
             val email = binding.etEmail.text.toString().trim()
-            if (email.isNotEmpty()) {
-                viewModel.login(email)
+            val password = binding.etPassword.text.toString().trim() // 🔹 Added UI reference injection
+
+            if (email.isNotEmpty() && password.isNotEmpty()) {
+                viewModel.login(email, password)
             } else {
-                Toast.makeText(this, "Please enter your registered email address", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Please fill out both email and password fields.", Toast.LENGTH_SHORT).show()
             }
         }
 

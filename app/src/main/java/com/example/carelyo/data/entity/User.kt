@@ -11,6 +11,7 @@ data class User @OptIn(ExperimentalSerializationApi::class) constructor(
     @EncodeDefault(EncodeDefault.Mode.NEVER) val UserID: Int = 0,
     val firebase_fcm_token: String? = null,
     val email: String,
+    val password: String = "",
     val full_name: String?,
     val phone_number: String? = null,
     val role: String?,

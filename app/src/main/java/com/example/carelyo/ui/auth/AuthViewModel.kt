@@ -24,14 +24,14 @@ class AuthViewModel(application: Application) : AndroidViewModel(application), C
         CarelyoMessageBroker.registerAgent(this)
     }
 
-    fun login(email: String) {
+    fun login(email: String, passwordEntered: String) {
         _authState.value = AuthState.Loading
-        authAgent.performUserLogin(email)
+        authAgent.performUserLogin(email, passwordEntered)
     }
 
-    fun register(email: String, name: String, phone: String, role: String = "Parent") {
+    fun register(email: String, passwordEntered: String, name: String, phone: String, role: String = "Parent") {
         _authState.value = AuthState.Loading
-        authAgent.registerNewUser(email, name, phone, role)
+        authAgent.registerNewUser(email, passwordEntered, name, phone, role)
     }
 
     fun resetPassword(email: String) {
@@ -52,8 +52,19 @@ class AuthViewModel(application: Application) : AndroidViewModel(application), C
 
             // 🔹 ADD THE NEW CONDITION RIGHT HERE
             "PASSWORD_RESET_SENT" -> {
-                // Uses a dummy/blank User payload just to flag the success architecture channel cleanly
-                _authState.postValue(AuthState.Success(User(0, null, "", null, null, null)))
+                // 🔹 FIX: Use explicit named arguments to avoid positional parameter mismatches
+                _authState.postValue(
+                    AuthState.Success(
+                        User(
+                            UserID = 0,
+                            firebase_fcm_token = null,
+                            email = "",
+                            password = "",
+                            full_name = null,
+                            role = null
+                        )
+                    )
+                )
             }
 
             "LOGIN_UNAUTHORIZED", "REGISTRATION_FAILED", "LOGIN_EXCEPTION", "PASSWORD_RESET_FAILURE" -> {

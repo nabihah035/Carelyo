@@ -19,28 +19,23 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
         CarelyoMessageBroker.registerAgent(this)
     }
 
-    /**
-     * Registers the user in Supabase FIRST, then fetches the auto-assigned ID,*/
-    fun registerNewUser(email: String, fullName: String, phoneNumber: String, role: String) {
+    fun registerNewUser(email: String, password: String, fullName: String, phoneNumber: String, role: String) {
         scope.launch(Dispatchers.IO) {
-            println("[$agentName]: Initiating Registration for: $email")
+            println("[$agentName]: Handling secure registration flow for: $email")
             try {
                 val newUser = User(
                     email = email,
+                    password = password, // Secure payload injection
                     full_name = fullName,
                     phone_number = phoneNumber,
                     role = role,
                     firebase_fcm_token = null
                 )
 
-                // SINGLE network call: insert and get the saved row back in one shot
                 val savedUser = SupabaseClient.client.postgrest["USER"]
                     .insert(newUser) { select() }
                     .decodeSingle<User>()
 
-                println("[$agentName]: Registered with ID: ${savedUser.UserID}")
-
-                // Broadcast success immediately — UI navigates NOW
                 CarelyoMessageBroker.passMessage(
                     CarelyoMessage(
                         sender = agentName,
@@ -49,17 +44,15 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
                         content = mapOf("user" to savedUser)
                     )
                 )
-
             } catch (e: Exception) {
-                println("[$agentName]: Registration failed: ${e.localizedMessage}")
-                sendFailureNotification("REGISTRATION_FAILED", e.localizedMessage ?: "Unknown error")
+                sendFailureNotification("REGISTRATION_FAILED", e.localizedMessage ?: "Database insertion failure.")
             }
         }
     }
 
-    fun performUserLogin(email: String) {
+    fun performUserLogin(email: String, passwordEntered: String) {
         scope.launch(Dispatchers.IO) {
-            println("[$agentName]: Login attempt for: $email")
+            println("[$agentName]: Login validation request for parameter key: $email")
             try {
                 val userList = SupabaseClient.client.postgrest["USER"]
                     .select { filter { eq("email", email) } }
@@ -67,21 +60,27 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
 
                 if (userList.isNotEmpty()) {
                     val user = userList.first()
-                    println("[$agentName]: Login verified for ${user.full_name}")
-                    refreshFcmTokenLifecycle(user)
 
-                    val successMsg = CarelyoMessage(
-                        sender = agentName,
-                        receiver = "BROADCAST",
-                        messageType = "INFORM_USER_SESSION_ACTIVE",
-                        content = mapOf("user" to user)
-                    )
-                    CarelyoMessageBroker.passMessage(successMsg)
+                    // Verify if database password match criteria evaluates correctly
+                    if (user.password == passwordEntered) {
+                        println("[$agentName]: Secure login matching verified for ${user.full_name}")
+                        refreshFcmTokenLifecycle(user)
+
+                        val successMsg = CarelyoMessage(
+                            sender = agentName,
+                            receiver = "BROADCAST",
+                            messageType = "INFORM_USER_SESSION_ACTIVE",
+                            content = mapOf("user" to user)
+                        )
+                        CarelyoMessageBroker.passMessage(successMsg)
+                    } else {
+                        sendFailureNotification("LOGIN_UNAUTHORIZED", "Invalid password security credential matching failed.")
+                    }
                 } else {
-                    sendFailureNotification("LOGIN_UNAUTHORIZED", "No account found for: $email")
+                    sendFailureNotification("LOGIN_UNAUTHORIZED", "No database profile tied to matching address string: $email")
                 }
             } catch (e: Exception) {
-                sendFailureNotification("LOGIN_EXCEPTION", e.localizedMessage ?: "Connection error")
+                sendFailureNotification("LOGIN_EXCEPTION", e.localizedMessage ?: "Network query timed out.")
             }
         }
     }

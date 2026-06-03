@@ -118,6 +118,71 @@
                     android:inputType="textPassword" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <LinearLayout
+                android:id="@+id/llPasswordChecklist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:layout_marginHorizontal="4dp"
+                android:orientation="vertical"
+                app:layout_constraintTop_toBottomOf="@id/tilPassword"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <TextView
+                    android:id="@+id/tvRuleLength"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="○ At least 8 characters"
+                    android:textColor="#C62828"
+                    android:textSize="12sp"
+                    android:paddingBottom="2dp" />
+
+                <TextView
+                    android:id="@+id/tvRuleUppercase"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="○ One uppercase letter (A-Z)"
+                    android:textColor="#C62828"
+                    android:textSize="12sp"
+                    android:paddingBottom="2dp" />
+
+                <TextView
+                    android:id="@+id/tvRuleLowercase"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="○ One lowercase letter (a-z)"
+                    android:textColor="#C62828"
+                    android:textSize="12sp"
+                    android:paddingBottom="2dp" />
+
+                <TextView
+                    android:id="@+id/tvRuleDigit"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="○ One numerical digit (0-9)"
+                    android:textColor="#C62828"
+                    android:textSize="12sp"
+                    android:paddingBottom="2dp" />
+
+                <TextView
+                    android:id="@+id/tvRuleSpecial"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="○ One special character (!@#$%)"
+                    android:textColor="#C62828"
+                    android:textSize="12sp"
+                    android:paddingBottom="2dp" />
+
+                <TextView
+                    android:id="@+id/tvRuleObvious"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="○ Avoid names, email handles, or 'password'"
+                    android:textColor="#C62828"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/tilConfirmPassword"
                 android:layout_width="match_parent"
@@ -127,7 +192,7 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tilPassword">
+                app:layout_constraintTop_toBottomOf="@+id/llPasswordChecklist">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/etConfirmPassword"
