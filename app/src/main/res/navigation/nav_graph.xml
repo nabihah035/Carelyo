@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/navigation_home">
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="com.example.carelyo.ui.dashboard.HomeFragment"
+        android:label="Home"
+        tools:layout="@layout/fragment_home" />
+
+    <fragment
+        android:id="@+id/navigation_vaccines"
+        android:name="com.example.carelyo.ui.dashboard.VaccinesFragment"
+        android:label="Vaccines"
+        tools:layout="@layout/fragment_vaccines" />
+
+    <fragment
+        android:id="@+id/navigation_ai_help"
+        android:name="com.example.carelyo.ui.dashboard.AIHelpFragment"
+        android:label="AI Help"
+        tools:layout="@layout/fragment_ai_help" />
+
+    <fragment
+        android:id="@+id/navigation_reminders"
+        android:name="com.example.carelyo.ui.dashboard.RemindersFragment"
+        android:label="Reminders"
+        tools:layout="@layout/fragment_reminders" />
+
+    <fragment
+        android:id="@+id/navigation_profile"
+        android:name="com.example.carelyo.ui.dashboard.ProfileFragment"
+        android:label="Profile"
+        tools:layout="@layout/fragment_profile" />
+
+</navigation>

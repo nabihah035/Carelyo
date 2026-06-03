@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1025202711877",
+    "project_id": "carelyo-cee13",
+    "storage_bucket": "carelyo-cee13.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1025202711877:android:37f58870bc61c0ad7d622c",
+        "android_client_info": {
+          "package_name": "com.example.carelyo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDFhv3ZSdDR5_IroiTEE1-JWYagRZY6vdM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
