@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigation_home"
+        android:icon="@drawable/ic_menu_home"
+        android:title="Home" />
+
+    <item
+        android:id="@+id/navigation_vaccines"
+        android:icon="@drawable/ic_menu_vaccines"
+        android:title="Vaccines" />
+
+    <item
+        android:id="@+id/navigation_ai_help"
+        android:icon="@drawable/ic_menu_help"
+        android:title="AI Help" />
+
+    <item
+        android:id="@+id/navigation_reminders"
+        android:icon="@drawable/ic_menu_reminders"
+        android:title="Reminders" />
+
+    <item
+        android:id="@+id/navigation_profile"
+        android:icon="@drawable/ic_menu_profile"
+        android:title="Profile" />
+
+</menu>
