@@ -3,7 +3,7 @@ package com.example.carelyo.api.supabase
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.storage.Storage
-import io.ktor.client.engine.android.Android // 🔹 Import the missing Ktor Android Engine
+import io.ktor.client.engine.android.Android
 
 object SupabaseClient {
 

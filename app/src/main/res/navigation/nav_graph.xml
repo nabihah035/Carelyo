@@ -19,7 +19,7 @@
 
     <fragment
         android:id="@+id/navigation_ai_help"
-        android:name="com.example.carelyo.ui.dashboard.AIHelpFragment"
+        android:name="com.example.carelyo.ui.aihelp.AIHelpFragment"
         android:label="AI Help"
         tools:layout="@layout/fragment_ai_help" />
 
