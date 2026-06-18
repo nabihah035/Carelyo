@@ -11,6 +11,8 @@ import com.example.carelyo.agent.infra.CarelyoMessage
 import com.example.carelyo.agent.infra.CarelyoMessageBroker
 import com.example.carelyo.data.entity.User
 import com.example.carelyo.data.session.SessionManager
+import com.example.carelyo.data.entity.RegisterUserRequest
+
 
 class AuthViewModel(application: Application) : AndroidViewModel(application), CarelyoAgent {
     override val agentName: String = "AuthViewModelAgent"
@@ -60,7 +62,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application), C
                                 full_name       = m["full_name"] as? String,
                                 phone_number    = m["phone_number"] as? String,
                                 role            = m["role"] as? String,
-                                firebase_fcm_token = m["firebase_fcm_token"] as? String,
                                 created_at      = m["created_at"] as? String,
                                 updated_at      = m["updated_at"] as? String
                             )
@@ -82,7 +83,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application), C
                     AuthState.Success(
                         User(
                             UserID = 0,
-                            firebase_fcm_token = null,
                             email = "",
                             password = "",
                             full_name = null,

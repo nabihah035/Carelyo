@@ -28,8 +28,7 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     password = password, // Secure payload injection
                     full_name = fullName,
                     phone_number = phoneNumber,
-                    role = role,
-                    firebase_fcm_token = null
+                    role = role
                 )
 
                 val savedUser = SupabaseClient.client.postgrest["USER"]
@@ -64,7 +63,6 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     // Verify if database password match criteria evaluates correctly
                     if (user.password == passwordEntered) {
                         println("[$agentName]: Secure login matching verified for ${user.full_name}")
-                        refreshFcmTokenLifecycle(user)
 
                         val successMsg = CarelyoMessage(
                             sender = agentName,
@@ -81,24 +79,6 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 }
             } catch (e: Exception) {
                 sendFailureNotification("LOGIN_EXCEPTION", e.localizedMessage ?: "Network query timed out.")
-            }
-        }
-    }
-
-    private fun refreshFcmTokenLifecycle(user: User) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                val updatedToken = FirebaseMessaging.getInstance().token.await()
-                if (user.firebase_fcm_token != updatedToken) {
-                    SupabaseClient.client.postgrest["USER"].update({
-                        set("firebase_fcm_token", updatedToken)
-                    }) {
-                        filter { eq("UserID", user.UserID) }
-                    }
-                    println("[$agentName]: FCM token refreshed on login.")
-                }
-            } catch (e: Exception) {
-                println("[$agentName]: Background FCM refresh skipped: ${e.localizedMessage}")
             }
         }
     }

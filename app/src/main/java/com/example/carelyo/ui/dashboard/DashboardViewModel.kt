@@ -17,9 +17,11 @@ import com.example.carelyo.data.session.SessionManager
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+import com.example.carelyo.data.entity.UpcomingMedication
 import java.text.SimpleDateFormat
 import java.util.*
+import com.example.carelyo.data.entity.UpcomingVaccination
+import com.example.carelyo.data.entity.UpcomingAppointment
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application), CarelyoAgent {
     override val agentName: String = "DashboardViewModelAgent"
@@ -254,24 +256,6 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 println("[$agentName]: Child fetch failed — $reason")
                 _isLoading.postValue(false)
                 _errorMessage.postValue(reason)
-            }
-        }
-    }
-
-    fun uploadFcmToken() {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val currentUser = sessionManager.getUserSession()
-                if (currentUser != null && currentUser.UserID > 0) {
-                    val token = com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
-                    SupabaseClient.client.postgrest["USER"].update({
-                        set("firebase_fcm_token", token)
-                    }) {
-                        filter { eq("UserID", currentUser.UserID) }
-                    }
-                }
-            } catch (e: Exception) {
-                println("[$agentName]: Silent token upload skipped: ${e.localizedMessage}")
             }
         }
     }

@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.session.SessionManager
 import com.example.carelyo.databinding.FragmentProfileBinding
+import android.content.Intent
+import com.example.carelyo.ui.auth.LoginActivity
 
 class ProfileFragment : Fragment() {
 
@@ -58,6 +60,8 @@ class ProfileFragment : Fragment() {
 
         // Setup help & support
         setupHelpSupport()
+
+        setupLogout()
     }
 
     private fun setupChildrenRecyclerView() {
@@ -120,6 +124,21 @@ class ProfileFragment : Fragment() {
         binding.cvHelpSupport.setOnClickListener {
             Toast.makeText(requireContext(), "FAQs and Support", Toast.LENGTH_SHORT).show()
             // TODO: Navigate to FAQ/Support screen
+        }
+    }
+
+    private fun setupLogout() {
+        binding.cvLogout.setOnClickListener {
+            // 1. Clear the user session
+            // (Assuming your SessionManager has a clearSession(), logout(), or similar method)
+            sessionManager.clearSession()
+
+            // 2. Navigate back to the Login screen and clear the activity backstack
+            // (Replace 'LoginActivity::class.java' with the actual name of your login/auth activity)
+            val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
         }
     }
 

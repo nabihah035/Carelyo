@@ -31,66 +31,66 @@
                 app:cardElevation="4dp"
                 android:backgroundTint="#FF5722">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp">
-
-                <!-- Horizontal Layout for Icon and Header -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:orientation="vertical"
+                    android:padding="20dp">
 
-                    <!-- AI Icon with Square Background -->
-                    <FrameLayout
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginEnd="16dp">
-
-                        <View
-                            android:layout_width="60dp"
-                            android:layout_height="60dp"
-                            android:background="@drawable/square_background"
-                            android:backgroundTint="#FFFFFF" />
-
-                        <ImageView
-                            android:layout_width="60dp"
-                            android:layout_height="60dp"
-                            android:src="@drawable/ic_ai_assistant"
-                            android:padding="12dp" />
-                    </FrameLayout>
-
-                    <!-- Header Text Container -->
+                    <!-- Horizontal Layout for Icon and Header -->
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
 
-                        <!-- Header -->
-                        <TextView
+                        <!-- AI Icon with Square Background -->
+                        <FrameLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="AI Health Assistant"
-                            android:textColor="#FFFFFF"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
+                            android:layout_marginEnd="16dp">
 
-                        <!-- Small Text -->
-                        <TextView
-                            android:layout_width="wrap_content"
+                            <View
+                                android:layout_width="60dp"
+                                android:layout_height="60dp"
+                                android:background="@drawable/square_background"
+                                android:backgroundTint="#FFFFFF" />
+
+                            <ImageView
+                                android:layout_width="60dp"
+                                android:layout_height="60dp"
+                                android:src="@drawable/ic_ai_assistant"
+                                android:padding="12dp" />
+                        </FrameLayout>
+
+                        <!-- Header Text Container -->
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="Malaysian Healthcare Guidelines"
-                            android:textColor="#FFE0B2"
-                            android:textSize="12sp" />
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <!-- Header -->
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="AI Health Assistant"
+                                android:textColor="#FFFFFF"
+                                android:textSize="20sp"
+                                android:textStyle="bold" />
+
+                            <!-- Small Text -->
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:text="Malaysian Healthcare Guidelines"
+                                android:textColor="#FFE0B2"
+                                android:textSize="12sp" />
+                        </LinearLayout>
                     </LinearLayout>
-                </LinearLayout>
 
-            </LinearLayout>
+                </LinearLayout>
 
             </androidx.cardview.widget.CardView>
 
@@ -149,15 +149,15 @@
             android:maxLines="4"
             android:inputType="textMultiLine" />
 
-        <androidx.appcompat.widget.AppCompatButton
+        <ImageButton
             android:id="@+id/sendButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="8dp"
             android:background="@drawable/send_button_background"
-            app:icon="@drawable/ic_send"
-            app:iconGravity="textStart"
-            android:text="" />
+            android:src="@drawable/ic_send"
+            android:scaleType="centerInside"
+            android:contentDescription="Send Message" />
 
     </LinearLayout>
 

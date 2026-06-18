@@ -1,8 +1,11 @@
 package com.example.carelyo.ui.dashboard
 
 import android.os.Bundle
+import android.view.View
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.example.carelyo.R
@@ -24,33 +27,18 @@ class DashboardActivity : AppCompatActivity() {
         val navController = navHostFragment.navController
         binding.bottomNavigationView.setupWithNavController(navController)
 
-        // Kick off multi-agent pipelines to retrieve background information from Supabase
-        viewModel.loadDashboardData()
-
-        // Handle runtime permissions for Android 13 (API 33) and above
-        if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
-            android.content.pm.PackageManager.PERMISSION_GRANTED) {
-
-            // Request the permission from the user
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
-        } else {
-            // Permission was already granted in a previous session, run sync immediately
-            viewModel.uploadFcmToken()
-        }
-    }
-
-    // 🔹 Add this override method to intercept the exact moment they click "Allow"
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 101) {
-            if (grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                println("[DashboardActivity]: Notification permission granted by user.")
+        // Dynamically manage visibility of bottom navigation based on keyboard state
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val isKeyboardVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            if (isKeyboardVisible) {
+                binding.bottomNavigationView.visibility = View.GONE
             } else {
-                println("[DashboardActivity]: Notification permission denied. Syncing token anyway for fallback processing.")
+                binding.bottomNavigationView.visibility = View.VISIBLE
             }
-
-            // Trigger the token upload asynchronously now that the dialog is dismissed!
-            viewModel.uploadFcmToken()
+            insets
         }
+
+        // Kick off pipelines to retrieve background information from Supabase
+        viewModel.loadDashboardData()
     }
 }

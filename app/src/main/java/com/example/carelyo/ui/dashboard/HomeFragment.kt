@@ -17,6 +17,9 @@ import com.example.carelyo.ui.medical.DoctorSummaryActivity
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.floor
+import com.example.carelyo.data.entity.UpcomingMedication
+import com.example.carelyo.data.entity.UpcomingVaccination
+import com.example.carelyo.data.entity.UpcomingAppointment
 
 class HomeFragment : Fragment() {
 
@@ -319,25 +322,3 @@ class HomeFragment : Fragment() {
         _binding = null
     }
 }
-
-// ── Shared data classes ───────────────────────────────────────────────────────
-
-data class UpcomingVaccination(
-    val vaccineName: String,
-    val dueDate: String?,
-    val childId: Int
-)
-
-data class UpcomingMedication(
-    val medicationName: String,
-    val dosage: String?,
-    val scheduledTime: String?,
-    val childId: Int
-)
-
-data class UpcomingAppointment(
-    val clinicName: String?,
-    val appointmentDate: String?,
-    val appointmentTime: String?,
-    val childId: Int
-)

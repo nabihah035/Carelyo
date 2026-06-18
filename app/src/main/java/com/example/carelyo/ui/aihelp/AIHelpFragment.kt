@@ -8,7 +8,6 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.widget.AppCompatButton
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -19,6 +18,8 @@ import com.example.carelyo.R
 import com.example.carelyo.api.chat.ChatViewModel
 import com.example.carelyo.databinding.FragmentAiHelpBinding
 import kotlinx.coroutines.launch
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 
 class AIHelpFragment : Fragment() {
 
@@ -31,7 +32,7 @@ class AIHelpFragment : Fragment() {
     private lateinit var chatAdapter: ChatAdapter
     private val chatMessages = mutableListOf<ChatMessage>()
     private lateinit var messageInput: EditText
-    private lateinit var sendButton: AppCompatButton
+    private lateinit var sendButton: android.widget.ImageButton
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -150,8 +151,9 @@ class AIHelpFragment : Fragment() {
     }
 
     private fun setupMessageInput() {
-        messageInput = binding.root.findViewById(R.id.messageInput)
-        sendButton = binding.root.findViewById(R.id.sendButton)
+        // Leverage View Binding directly instead of findViewById
+        messageInput = binding.messageInput
+        sendButton = binding.sendButton
 
         sendButton.setOnClickListener {
             sendMessage()
