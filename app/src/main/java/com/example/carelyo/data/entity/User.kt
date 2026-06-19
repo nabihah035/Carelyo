@@ -1,10 +1,11 @@
 package com.example.carelyo.data.entity
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 
 @Serializable
 data class User(
-    // Remove `@EncodeDefault` so the integer key is never stripped out of SharedPreferences JSON
+    @SerialName("userid")
     val UserID: Int = 0,
     val email: String,
     val password: String = "",

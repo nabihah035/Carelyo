@@ -25,24 +25,50 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 if (user != null) {
                     println("[$agentName]: Detected active user context for ID: ${user.UserID}. Fetching linked child metrics...")
 
-                    // BUG FIX #3: Guard against UserID=0. This happens when the User object
-                    // was restored from SharedPrefs and @EncodeDefault(NEVER) stripped the
-                    // UserID field during serialisation — resulting in the default value of 0.
                     if (user.UserID <= 0) {
-                        println("[$agentName]: UserID is 0 or invalid — session object is corrupt. Aborting child fetch.")
-                        CarelyoMessageBroker.passMessage(
-                            CarelyoMessage(
-                                sender = agentName,
-                                receiver = "DashboardViewModelAgent",
-                                messageType = "CHILD_FETCH_ERROR",
-                                content = mapOf("reason" to "Invalid UserID in session. Please log out and log in again.")
-                            )
-                        )
+                        println("[$agentName]: UserID is 0 or invalid. Aborting child fetch.")
+                        broadcastError("Invalid UserID in session. Please log out and log in again.")
                         return
                     }
-
                     fetchChildProfilesForParent(user.UserID)
                 }
+            }
+
+            // ── NEW HOOK: HANDLE ADD CHILD REQUESTS FROM PROFILE ──
+            "REQUEST_ADD_CHILD" -> {
+                val child = message.content["child"] as? Child
+                if (child != null) {
+                    println("[$agentName]: Received request to add new child: ${child.full_name} for Parent ID: ${child.Parent_ID}")
+                    insertChildRecord(child)
+                } else {
+                    println("[$agentName]: Received invalid or null child payload inside REQUEST_ADD_CHILD")
+                }
+            }
+        }
+    }
+
+    private fun insertChildRecord(child: Child) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                // Postgrest auto-strips the 0-value ChildID column and relies on identity generation rules
+                SupabaseClient.client.postgrest["CHILD"].insert(child)
+                println("[$agentName]: Successfully appended new child record to DB database.")
+
+                // Refresh the entire parent collection stack so your active UI flows updates instantly
+                fetchChildProfilesForParent(child.Parent_ID)
+
+                // Notify via Broadcast that child registration completed cleanly
+                CarelyoMessageBroker.passMessage(
+                    CarelyoMessage(
+                        sender = agentName,
+                        receiver = "BROADCAST",
+                        messageType = "INFORM_CHILD_ADD_SUCCESS",
+                        content = emptyMap()
+                    )
+                )
+            } catch (e: Exception) {
+                println("[$agentName]: Failed to write child entity parameters: ${e.localizedMessage}")
+                broadcastError("Failed to save child data: ${e.localizedMessage}")
             }
         }
     }
@@ -55,48 +81,30 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 }
                 val childrenList = result.decodeList<Child>()
 
-                if (childrenList.isNotEmpty()) {
-                    println("[$agentName]: Located ${childrenList.size} registered child profiles for parent ID: $parentId")
+                println("[$agentName]: Located ${childrenList.size} registered child profiles for parent ID: $parentId")
 
-                    // BUG FIX #1 — CRITICAL:
-                    // The original code sent this message ONLY to "VaccinationMonitoringAgent".
-                    // DashboardViewModelAgent listens for "INFORM_CHILD_PROFILES_READY" but
-                    // never received it, so _childrenList was never populated and the progress
-                    // bar spun indefinitely.
-                    //
-                    // Fix: send as BROADCAST so BOTH DashboardViewModelAgent (UI) and
-                    // VaccinationMonitoringAgent (audit) receive it in one pass.
-                    val childrenLoadedMsg = CarelyoMessage(
-                        sender = agentName,
-                        receiver = "BROADCAST",                  // ← was "VaccinationMonitoringAgent"
-                        messageType = "INFORM_CHILD_PROFILES_READY",
-                        content = mapOf("children" to childrenList)
-                    )
-                    CarelyoMessageBroker.passMessage(childrenLoadedMsg)
-                } else {
-                    println("[$agentName]: No child records found for parent ID: $parentId")
-
-                    // Notify dashboard so it can hide the loading spinner
-                    CarelyoMessageBroker.passMessage(
-                        CarelyoMessage(
-                            sender = agentName,
-                            receiver = "DashboardViewModelAgent",
-                            messageType = "INFORM_CHILD_PROFILES_READY",
-                            content = mapOf("children" to emptyList<Child>())
-                        )
-                    )
-                }
+                val childrenLoadedMsg = CarelyoMessage(
+                    sender = agentName,
+                    receiver = "BROADCAST",
+                    messageType = "INFORM_CHILD_PROFILES_READY",
+                    content = mapOf("children" to childrenList)
+                )
+                CarelyoMessageBroker.passMessage(childrenLoadedMsg)
             } catch (e: Exception) {
                 println("[$agentName]: Error querying CHILD table: ${e.localizedMessage}")
-                CarelyoMessageBroker.passMessage(
-                    CarelyoMessage(
-                        sender = agentName,
-                        receiver = "DashboardViewModelAgent",
-                        messageType = "CHILD_FETCH_ERROR",
-                        content = mapOf("reason" to (e.localizedMessage ?: "Unknown error"))
-                    )
-                )
+                broadcastError(e.localizedMessage ?: "Unknown database error encountered.")
             }
         }
+    }
+
+    private fun broadcastError(reason: String) {
+        CarelyoMessageBroker.passMessage(
+            CarelyoMessage(
+                sender = agentName,
+                receiver = "DashboardViewModelAgent",
+                messageType = "CHILD_FETCH_ERROR",
+                content = mapOf("reason" to reason)
+            )
+        )
     }
 }

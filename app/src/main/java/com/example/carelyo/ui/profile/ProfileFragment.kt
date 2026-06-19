@@ -1,5 +1,6 @@
-package com.example.carelyo.ui.dashboard
+package com.example.carelyo.ui.profile
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,7 +11,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.session.SessionManager
 import com.example.carelyo.databinding.FragmentProfileBinding
-import android.content.Intent
 import com.example.carelyo.ui.auth.LoginActivity
 
 class ProfileFragment : Fragment() {
@@ -66,7 +66,8 @@ class ProfileFragment : Fragment() {
 
     private fun setupChildrenRecyclerView() {
         childrenAdapter = ChildrenAdapter { child ->
-            Toast.makeText(requireContext(), "Selected: ${child.full_name}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(requireContext(), "Selected: ${child.full_name}", Toast.LENGTH_SHORT)
+                .show()
             // TODO: Navigate to child details screen
         }
 

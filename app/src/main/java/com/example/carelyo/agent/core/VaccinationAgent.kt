@@ -15,10 +15,9 @@ import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAgent {
+class VaccinationAgent(private val scope: CoroutineScope) : CarelyoAgent {
     override val agentName: String = "VaccinationMonitoringAgent"
 
-    // Cache for data
     private var cachedVaccinations: List<Vaccination> = emptyList()
     private var cachedChildVaccines: List<ChildVaccine> = emptyList()
     private var cachedChildren: List<Child> = emptyList()
@@ -33,22 +32,37 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
                 val children = message.content["children"] as? List<*>
                 children?.filterIsInstance<Child>()?.let {
                     cachedChildren = it
-                    println("[$agentName]: Received ${it.size} child profiles")
+                    println("[$agentName]: Cached ${it.size} child profiles from message broker context.")
                     it.forEach { child ->
-                        println("[$agentName]: Running immunisation audit evaluation for: ${child.full_name}")
                         evaluateScheduleMetrics(child)
                     }
                 }
             }
+
+            // ── NEW HOOK: FETCH FORM SELECTION POPULATION BASELINES ──
+            "REQUEST_INITIAL_VACCINE_FORM_DATA" -> {
+                val sender = message.sender
+                scope.launch {
+                    fetchFormDropdownBaselines(sender)
+                }
+            }
+
+            // ── NEW HOOK: INSERT ASSIGNED VACCINATION FOR SELECTED CHILD ──
+            "REQUEST_ADD_CHILD_VACCINE" -> {
+                val childVaccinePayload = message.content["childVaccine"] as? ChildVaccine
+                if (childVaccinePayload != null) {
+                    insertNewChildVaccineSchedule(childVaccinePayload)
+                }
+            }
+
             "REQUEST_VACCINATION_DATA" -> {
-                // Handle request from VaccineViewModel
                 val sender = message.sender
                 val child = message.content["child"] as? Child
-                // Launch coroutine to handle suspend function
                 scope.launch {
                     fetchAllVaccinationData(sender, child)
                 }
             }
+
             "REQUEST_VACCINATION_AUDIT" -> {
                 val child = message.content["child"] as? Child
                 child?.let {
@@ -60,16 +74,80 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
         }
     }
 
+    private suspend fun fetchFormDropdownBaselines(requestingAgent: String) {
+        withContext(Dispatchers.IO) {
+            try {
+                // 1. Ensure master list of vaccines is loaded
+                if (cachedVaccinations.isEmpty()) {
+                    cachedVaccinations = SupabaseClient.client.postgrest["VACCINATION"]
+                        .select()
+                        .decodeList<Vaccination>()
+                }
+
+                // 2. Transmit available children and vaccines back to VaccineViewModel
+                val responseMsg = CarelyoMessage(
+                    sender = agentName,
+                    receiver = requestingAgent,
+                    messageType = "INFORM_INITIAL_VACCINE_FORM_READY",
+                    content = mapOf(
+                        "availableVaccines" to cachedVaccinations,
+                        "availableChildren" to cachedChildren
+                    )
+                )
+                CarelyoMessageBroker.passMessage(responseMsg)
+                println("[$agentName]: Sent Form Data Setup. Children: ${cachedChildren.size}, Vaccines: ${cachedVaccinations.size}")
+
+            } catch (e: Exception) {
+                println("[$agentName]: Dropdown baseline retrieval failed: ${e.localizedMessage}")
+                sendFormErrorNotification(requestingAgent, e.localizedMessage ?: "Failed to read lookup data.")
+            }
+        }
+    }
+
+    private fun insertNewChildVaccineSchedule(childVaccine: ChildVaccine) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                println("[$agentName]: Attempting database insert for Vaccine ID ${childVaccine.VaccineID} onto Child ID ${childVaccine.ChildID}")
+
+                // Write directly to Supabase CHILD_VACCINE table
+                SupabaseClient.client.postgrest["CHILD_VACCINE"].insert(childVaccine)
+
+                println("[$agentName]: Successfully saved child vaccine mapping to DB storage tier.")
+
+                // Reset local child-vaccine memory cache block so the next query includes the new line items
+                cachedChildVaccines = emptyList()
+
+                // Notify UI of transaction completion
+                CarelyoMessageBroker.passMessage(
+                    CarelyoMessage(
+                        sender = agentName,
+                        receiver = "BROADCAST",
+                        messageType = "INFORM_CHILD_VACCINE_ADD_SUCCESS",
+                        content = mapOf("childId" to childVaccine.ChildID)
+                    )
+                )
+            } catch (e: Exception) {
+                println("[$agentName]: Database insertion aborted: ${e.localizedMessage}")
+                CarelyoMessageBroker.passMessage(
+                    CarelyoMessage(
+                        sender = agentName,
+                        receiver = "BROADCAST",
+                        messageType = "INFORM_VACCINATION_ERROR",
+                        content = mapOf("error" to (e.localizedMessage ?: "Failed to write vaccine record."))
+                    )
+                )
+            }
+        }
+    }
+
     private suspend fun performDetailedAudit(child: Child) {
         try {
             val birthDate = LocalDate.parse(child.date_of_birth)
             val currentDate = LocalDate.now()
             val ageInMonths = ChronoUnit.MONTHS.between(birthDate, currentDate).toInt()
 
-            // Get child's completed vaccines
             val childCompletedVaccines = cachedChildVaccines.filter {
-                it.ChildID == child.ChildID &&
-                        it.status?.equals("Administered", ignoreCase = true) == true
+                it.ChildID == child.ChildID && it.status?.equals("Administered", ignoreCase = true) == true
             }
 
             val expectedVaccines = getExpectedVaccinesForAge(ageInMonths)
@@ -100,7 +178,6 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
                 content = mapOf("auditReport" to auditReport)
             )
             CarelyoMessageBroker.passMessage(auditMessage)
-
         } catch (e: Exception) {
             println("[$agentName]: Audit failed for ${child.full_name}: ${e.message}")
         }
@@ -109,25 +186,14 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
     private suspend fun fetchAllVaccinationData(requestingAgent: String, specificChild: Child?) {
         withContext(Dispatchers.IO) {
             try {
-                // Fetch all vaccines from VACCINATION table if not cached
                 if (cachedVaccinations.isEmpty()) {
-                    val vaccinationsResult = SupabaseClient.client.postgrest["VACCINATION"]
-                        .select()
-                        .decodeList<Vaccination>()
-                    cachedVaccinations = vaccinationsResult
-                    println("[$agentName]: Fetched ${cachedVaccinations.size} vaccines")
+                    cachedVaccinations = SupabaseClient.client.postgrest["VACCINATION"].select().decodeList<Vaccination>()
                 }
 
-                // Fetch all child vaccines if not cached
                 if (cachedChildVaccines.isEmpty()) {
-                    val childVaccinesResult = SupabaseClient.client.postgrest["CHILD_VACCINE"]
-                        .select()
-                        .decodeList<ChildVaccine>()
-                    cachedChildVaccines = childVaccinesResult
-                    println("[$agentName]: Fetched ${cachedChildVaccines.size} child vaccine records")
+                    cachedChildVaccines = SupabaseClient.client.postgrest["CHILD_VACCINE"].select().decodeList<ChildVaccine>()
                 }
 
-                // Filter by child if specified
                 val filteredChildVaccines = if (specificChild != null) {
                     cachedChildVaccines.filter { it.ChildID == specificChild.ChildID }
                 } else {
@@ -145,18 +211,8 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
                     )
                 )
                 CarelyoMessageBroker.passMessage(responseMsg)
-
-                println("[$agentName]: Vaccination data sent to $requestingAgent. Vaccines: ${cachedVaccinations.size}, Child Vaccines: ${filteredChildVaccines.size}")
             } catch (e: Exception) {
-                println("[$agentName]: Error fetching vaccination data: ${e.localizedMessage}")
-                e.printStackTrace()
-                val errorMsg = CarelyoMessage(
-                    sender = agentName,
-                    receiver = requestingAgent,
-                    messageType = "INFORM_VACCINATION_ERROR",
-                    content = mapOf("error" to (e.localizedMessage ?: "Unknown error"))
-                )
-                CarelyoMessageBroker.passMessage(errorMsg)
+                sendFormErrorNotification(requestingAgent, e.localizedMessage ?: "Unknown query exception.")
             }
         }
     }
@@ -166,19 +222,11 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
         try {
             val birthDate = LocalDate.parse(birthDateStr)
             val currentDate = LocalDate.now()
-            val ageInWeeks = ChronoUnit.WEEKS.between(birthDate, currentDate).toInt()
             val ageInMonths = ChronoUnit.MONTHS.between(birthDate, currentDate).toInt()
-
-            println("[$agentName]: Chronological metrics calculated for ${child.full_name} -> Age: $ageInWeeks Weeks ($ageInMonths Months)")
-
-            val targetedVaccines = getTargetedVaccinesByAge(ageInMonths)
-
-            println("[$agentName]: KKM immunization audit complete for ${child.full_name}. Recommended actions: $targetedVaccines")
 
             scope.launch {
                 executeImmunisationAudit(child, ageInMonths)
             }
-
         } catch (e: Exception) {
             println("[$agentName]: Failure computing dates for ${child.full_name}: ${e.localizedMessage}")
         }
@@ -192,21 +240,18 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
             ageInMonths in 3..3 -> listOf("Hexavalent DTaP-IPV-HepB-Hib Dose 2", "Pneumococcal PCV Dose 2")
             ageInMonths in 4..5 -> listOf("Hexavalent DTaP-IPV-HepB-Hib Dose 3")
             ageInMonths in 6..8 -> listOf("Pneumococcal PCV Booster")
-            ageInMonths in 9..11 -> listOf("MMR Dose 1", "JE Dose 1 (Sarawak only)")
-            ageInMonths in 12..17 -> listOf("MMR Dose 2", "JE Dose 2 (Sarawak only)")
+            ageInMonths in 9..11 -> listOf("MMR Dose 1", "JE Dose 1")
+            ageInMonths in 12..17 -> listOf("MMR Dose 2", "JE Dose 2")
             ageInMonths in 18..23 -> listOf("DTaP Booster", "IPV Booster")
-            ageInMonths in 24..71 -> listOf("MMR Booster (if needed)", "JE Booster (Sarawak only)")
-            else -> listOf("School entry boosters: dTap-IPV, MMR, HPV (adolescent)")
+            else -> listOf("School entry boosters: dTap-IPV, MMR, HPV")
         }
     }
 
     private suspend fun executeImmunisationAudit(child: Child, ageInMonths: Int) {
         val targetedVaccines = getTargetedVaccinesByAge(ageInMonths)
 
-        // Get child's completed vaccines
         val childCompletedVaccines = cachedChildVaccines.filter {
-            it.ChildID == child.ChildID &&
-                    it.status?.equals("Administered", ignoreCase = true) == true
+            it.ChildID == child.ChildID && it.status?.equals("Administered", ignoreCase = true) == true
         }
 
         val completedVaccineNames = childCompletedVaccines.mapNotNull { childVaccine ->
@@ -224,9 +269,6 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
             Target Child: ${child.full_name}
             Child ID: ${child.ChildID}
             Calculated Age Boundary: $ageInMonths Months
-            Expected KKM Immunisations: ${targetedVaccines.joinToString()}
-            Completed Immunisations: ${completedVaccineNames.joinToString()}
-            Missing Immunisations: ${missingVaccines.joinToString()}
             Audit Status: ${if (missingVaccines.isEmpty()) "ON TRACK" else "ACTION REQUIRED"}
         """.trimIndent()
 
@@ -238,9 +280,7 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
                 "reportLog" to detailedLogReport,
                 "childId" to child.ChildID,
                 "ageInMonths" to ageInMonths,
-                "missingVaccines" to missingVaccines,
-                "completedCount" to completedVaccineNames.size,
-                "expectedCount" to targetedVaccines.size
+                "missingVaccines" to missingVaccines
             )
         )
         CarelyoMessageBroker.passMessage(auditResponseMsg)
@@ -250,9 +290,20 @@ class VaccinationMonitoringAgent(private val scope: CoroutineScope) : CarelyoAge
         return cachedVaccinations.filter { vaccine ->
             vaccine.recommended_age_weeks?.let { weeks ->
                 val recommendedMonths = weeks / 4
-                recommendedMonths <= ageInMonths + 2 // Allow 2 months grace period
+                recommendedMonths <= ageInMonths + 2
             } ?: false
         }
+    }
+
+    private fun sendFormErrorNotification(receiver: String, message: String) {
+        CarelyoMessageBroker.passMessage(
+            CarelyoMessage(
+                sender = agentName,
+                receiver = receiver,
+                messageType = "INFORM_VACCINATION_ERROR",
+                content = mapOf("error" to message)
+            )
+        )
     }
 
     fun refreshData() {

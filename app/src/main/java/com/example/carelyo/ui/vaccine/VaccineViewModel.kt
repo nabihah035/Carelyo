@@ -1,4 +1,4 @@
-package com.example.carelyo.ui.dashboard
+package com.example.carelyo.ui.vaccine
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

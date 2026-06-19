@@ -1,5 +1,6 @@
 package com.example.carelyo.data.entity
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 // The MEDICATION_SCHEDULE.scheduled_time column is TIMESTAMPTZ in the database.
@@ -8,7 +9,9 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class MedicationSchedule(
-    val MedScheduleID: Int,
+    @SerialName("medscheduleid")
+    val MedScheduleID: Int = 0,
+    @SerialName("medid")
     val MedID: Int,
     val scheduled_time: String? = null,   // ISO-8601 TIMESTAMPTZ e.g. "2026-06-05T08:00:00+08:00"
     val created_at: String? = null

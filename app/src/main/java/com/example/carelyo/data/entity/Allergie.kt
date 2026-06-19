@@ -1,10 +1,13 @@
 package com.example.carelyo.data.entity
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class Allergie(
-    val AllergieID: Int,
+    @SerialName("allergieid")
+    val AllergieID: Int = 0,
+    @SerialName("childid")
     val ChildID: Int,
     val allergy_type: String? = null,
     val allergy_name: String? = null,

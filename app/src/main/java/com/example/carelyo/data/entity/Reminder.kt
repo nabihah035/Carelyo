@@ -1,11 +1,15 @@
 package com.example.carelyo.data.entity
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class Reminder(
-    val RemindID: Int,
+    @SerialName("remindid")
+    val RemindID: Int = 0,
+    @SerialName("childid")
     val ChildID: Int,
+    @SerialName("parentid")
     val ParentID: Int,
     val reminder_type: String? = null,
     val reference_id: Int? = null,

@@ -1,10 +1,13 @@
 package com.example.carelyo.data.entity
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class ChildVaccine(
-    val ChildVaccineID: Int,
+    @SerialName("childvaccineid")
+    val ChildVaccineID: Int = 0,
+    @SerialName("childid")
     val ChildID: Int,
     val VaccineID: Int,
     val status: String? = null,

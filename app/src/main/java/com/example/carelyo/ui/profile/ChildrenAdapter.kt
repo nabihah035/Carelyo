@@ -1,4 +1,4 @@
-package com.example.carelyo.ui.dashboard
+package com.example.carelyo.ui.profile
 
 import android.view.LayoutInflater
 import android.view.ViewGroup

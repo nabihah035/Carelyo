@@ -1,4 +1,4 @@
-package com.example.carelyo.ui.dashboard
+package com.example.carelyo.ui.vaccine
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,9 +9,11 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.carelyo.R
 import com.example.carelyo.databinding.FragmentVaccinesBinding
 import com.example.carelyo.databinding.ItemVaccineScheduleBinding
+import java.time.format.DateTimeFormatter
 
 class VaccinesFragment : Fragment() {
 
@@ -95,7 +97,7 @@ class VaccinesFragment : Fragment() {
 // RecyclerView Adapter for Vaccine Schedule
 class VaccineScheduleAdapter(
     private val onItemClick: (VaccineScheduleItem) -> Unit
-) : androidx.recyclerview.widget.RecyclerView.Adapter<VaccineScheduleAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<VaccineScheduleAdapter.ViewHolder>() {
 
     private var items: List<VaccineScheduleItem> = emptyList()
     private var expandedPositions = mutableSetOf<Int>()
@@ -133,7 +135,7 @@ class VaccineScheduleAdapter(
 
     inner class ViewHolder(
         private val binding: ItemVaccineScheduleBinding
-    ) : androidx.recyclerview.widget.RecyclerView.ViewHolder(binding.root) {
+    ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: VaccineScheduleItem, isExpanded: Boolean) {
             // Set icon based on status
@@ -167,7 +169,7 @@ class VaccineScheduleAdapter(
             binding.tvAgeRequirement.text = item.ageRequirement
 
             val dateText = if (item.status == VaccineStatus.DONE && item.givenDate != null) {
-                val formatter = java.time.format.DateTimeFormatter.ofPattern("dd MMM yyyy")
+                val formatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
                 "Given: ${item.givenDate.format(formatter)}"
             } else if (item.status == VaccineStatus.UPCOMING) {
                 "Due: Not yet scheduled"

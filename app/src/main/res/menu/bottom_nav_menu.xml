@@ -12,14 +12,14 @@
         android:title="Vaccines" />
 
     <item
-        android:id="@+id/navigation_ai_help"
-        android:icon="@drawable/ic_menu_help"
-        android:title="AI Help" />
+        android:id="@+id/navigation_health_records"
+        android:icon="@drawable/ic_health_record"
+        android:title="Health" />
 
     <item
-        android:id="@+id/navigation_reminders"
-        android:icon="@drawable/ic_menu_reminders"
-        android:title="Reminders" />
+        android:id="@+id/navigation_doctor_summary"
+        android:icon="@drawable/ic_doctor_summary"
+        android:title="Summary" />
 
     <item
         android:id="@+id/navigation_profile"

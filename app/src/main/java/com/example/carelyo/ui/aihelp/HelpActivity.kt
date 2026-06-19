@@ -1,32 +1,30 @@
 package com.example.carelyo.ui.aihelp
 
+import android.content.Intent
 import android.os.Bundle
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.fragment.app.Fragment
-import androidx.fragment.app.viewModels
+import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.carelyo.R
 import com.example.carelyo.api.chat.ChatViewModel
-import com.example.carelyo.databinding.FragmentAiHelpBinding
+import com.example.carelyo.databinding.ActivityHelpBinding
 import kotlinx.coroutines.launch
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import android.graphics.Color
+import android.graphics.Typeface
+import androidx.core.content.ContextCompat
 
-class AIHelpFragment : Fragment() {
+class HelpActivity : AppCompatActivity() {
 
-    private var _binding: FragmentAiHelpBinding? = null
-    private val binding get() = _binding!!
+    private lateinit var binding: ActivityHelpBinding
 
-    // Link the Fragment to your new architectural ChatViewModel
+    // Link the Activity to your architectural ChatViewModel
     private val viewModel: ChatViewModel by viewModels()
 
     private lateinit var chatAdapter: ChatAdapter
@@ -34,17 +32,15 @@ class AIHelpFragment : Fragment() {
     private lateinit var messageInput: EditText
     private lateinit var sendButton: android.widget.ImageButton
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentAiHelpBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+        // Initialize View Binding for Activity
+        binding = ActivityHelpBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+
+        // Set up the back navigation button
+        setupNavigation()
 
         setupChatRecyclerView()
         setupSuggestedQuestions()
@@ -54,15 +50,21 @@ class AIHelpFragment : Fragment() {
         observeViewModel()
     }
 
+    private fun setupNavigation() {
+        binding.btnBack.setOnClickListener {
+            finish()
+        }
+    }
+
     private fun setupChatRecyclerView() {
         chatAdapter = ChatAdapter(chatMessages)
-        binding.chatRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        binding.chatRecyclerView.layoutManager = LinearLayoutManager(this)
         binding.chatRecyclerView.adapter = chatAdapter
     }
 
     private fun observeViewModel() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+        lifecycleScope.launch {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.messagesList.collect { apiMessages ->
                     // 1. Filter out system prompt setup messages
                     val displayableMessages = apiMessages.filter { it.role != "system" }
@@ -105,14 +107,14 @@ class AIHelpFragment : Fragment() {
     private fun sendMessage() {
         val message = messageInput.text.toString().trim()
         if (message.isEmpty()) {
-            Toast.makeText(requireContext(), "Please enter a message", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Please enter a message", Toast.LENGTH_SHORT).show()
             return
         }
 
         // Clear input field immediately
         messageInput.text.clear()
 
-        // Send data directly to ViewModel (the layout collection stream now automatically triggers loading)
+        // Send data directly to ViewModel
         viewModel.sendMessageToMeditron(message)
     }
 
@@ -126,24 +128,35 @@ class AIHelpFragment : Fragment() {
         )
 
         val suggestionsLayout = binding.suggestedQuestionsLayout
-        suggestionsLayout.removeAllViews() // Avoid duplication on view recreation
+        suggestionsLayout.removeAllViews() // Avoid duplication
+
+        // Convert dps to pixels for accurate layout scaling
+        val density = resources.displayMetrics.density
+        val paddingHorizontal = (18 * density).toInt()
+        val paddingVertical = (14 * density).toInt()
+        val marginBottomPx = (10 * density).toInt()
 
         questions.forEach { question ->
-            val questionView = TextView(requireContext()).apply {
-                text = "• $question"
-                textSize = 14f
-                setTextColor(resources.getColor(R.color.black, null))
-                setPadding(16, 12, 16, 12)
-                background = resources.getDrawable(R.drawable.input_background, null)
+            val questionView = TextView(this).apply {
+                text = question // Removed bullet point to match image_2ed002.png
+                textSize = 15f
+                setTextColor(Color.parseColor("#0F766E")) // Deep teal/mint text
+                setTypeface(null, Typeface.BOLD) // Bold text style
+                setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, paddingVertical)
+
+                // Reference the light mint background drawable
+                background = ContextCompat.getDrawable(this@HelpActivity, R.drawable.bg_suggestion_pill)
+
                 layoutParams = LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT,
                     LinearLayout.LayoutParams.WRAP_CONTENT
                 ).apply {
-                    bottomMargin = 8
+                    bottomMargin = marginBottomPx
                 }
+
                 setOnClickListener {
-                    messageInput.setText(question)
-                    sendMessage()
+                    binding.messageInput.setText(question)
+                    sendMessage() // Make sure this matches your layout variable binding name
                 }
             }
             suggestionsLayout.addView(questionView)
@@ -151,7 +164,6 @@ class AIHelpFragment : Fragment() {
     }
 
     private fun setupMessageInput() {
-        // Leverage View Binding directly instead of findViewById
         messageInput = binding.messageInput
         sendButton = binding.sendButton
 
@@ -161,7 +173,6 @@ class AIHelpFragment : Fragment() {
     }
 
     private fun showTypingIndicator() {
-        // Only append if the last element isn't already a typing indicator
         if (chatMessages.isEmpty() || !chatMessages.last().isTyping) {
             chatMessages.add(ChatMessage("...", false, isTyping = true))
             chatAdapter.notifyItemInserted(chatMessages.size - 1)
@@ -175,10 +186,5 @@ class AIHelpFragment : Fragment() {
             chatMessages.removeAt(index)
             chatAdapter.notifyItemRemoved(index)
         }
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
     }
 }

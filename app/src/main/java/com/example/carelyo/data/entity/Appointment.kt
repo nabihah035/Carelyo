@@ -1,11 +1,15 @@
 package com.example.carelyo.data.entity
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class Appointment(
-    val AppID: Int,
+    @SerialName("appid")
+    val AppID: Int= 0,
+    @SerialName("parentid")
     val ParentID: Int,
+    @SerialName("childid")
     val ChildID: Int,
     val appointment_date: String? = null,
     val appointment_time: String? = null,
