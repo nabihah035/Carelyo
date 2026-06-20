@@ -18,4 +18,20 @@
     <color name="gray_700">#616161</color>
     <color name="purple_700">#3700B3</color>
     <color name="growth_normal">#4CAF50</color>
+
+    <!-- Allergy severity colors -->
+    <color name="allergy_severe">#D32F2F</color>    <!-- Red -->
+    <color name="allergy_moderate">#FF9800</color>  <!-- Orange -->
+    <color name="allergy_mild">#4CAF50</color>      <!-- Green -->
+    <color name="allergy_unknown">#9E9E9E</color>   <!-- Gray -->
+
+    <!-- Growth status colors -->
+    <color name="growth_warning">#FF9800</color>
+    <color name="growth_danger">#D32F2F</color>
+
+    <!-- Button selection colors -->
+    <color name="button_selected">#00A389</color>
+    <color name="button_unselected">#F1F5F9</color>
+    <color name="button_text_selected">#FFFFFF</color>
+    <color name="button_text_unselected">#334155</color>
 </resources>

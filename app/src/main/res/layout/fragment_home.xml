@@ -22,46 +22,44 @@
             android:visibility="gone"
             tools:visibility="visible" />
 
-        <!-- Child Selector -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/childSelectorContainer"
+        <!-- Dropdown Label Header -->
+        <TextView
+            android:id="@+id/tvDropdownLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:text="Select Child"
+            android:textSize="14sp"
+            android:textColor="#333333"
+            android:textStyle="bold" />
+
+        <!-- Material Exposed Dropdown Menu Selector -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/childSelectorMenu"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp"
-            android:clickable="true"
-            android:focusable="true">
+            android:layout_marginBottom="12dp"
+            app:boxBackgroundColor="@android:color/white"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:boxStrokeColor="#7C7C7C"
+            app:hintEnabled="false">
 
-            <LinearLayout
+            <AutoCompleteTextView
+                android:id="@+id/actvChildSelector"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="12dp"
-                android:gravity="center_vertical">
+                android:inputType="none"
+                android:padding="16dp"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="#333333"
+                android:popupBackground="@drawable/dropdown_popup_background" />
 
-                <TextView
-                    android:id="@+id/tvChildSelectorText"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Select Child"
-                    android:textSize="16sp"
-                    android:textStyle="bold" />
-
-                <ImageView
-                    android:id="@+id/ivDropdownIcon"
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
-                    android:src="@drawable/ic_dropdown"
-                    android:visibility="gone"
-                    tools:visibility="visible" />
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
-
-        <!-- Spacing -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="12dp" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Child Profile Card -->
         <androidx.cardview.widget.CardView
@@ -107,14 +105,6 @@
                             android:textColor="@android:color/white"
                             android:textSize="20sp"
                             android:textStyle="bold" />
-
-                        <TextView
-                            android:id="@+id/tvChildAge"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Age"
-                            android:textColor="@android:color/white"
-                            android:textSize="14sp" />
                     </LinearLayout>
 
                     <TextView
@@ -216,11 +206,6 @@
                 </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
-
-        <!-- Spacing -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="12dp" />
 
         <!-- Spacing -->
         <View

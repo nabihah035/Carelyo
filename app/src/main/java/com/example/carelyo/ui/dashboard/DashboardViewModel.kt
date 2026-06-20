@@ -6,21 +6,14 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.carelyo.api.supabase.SupabaseClient
-import com.example.carelyo.data.entity.Child
-import com.example.carelyo.data.entity.Medication
-import com.example.carelyo.data.entity.MedicationSchedule
-import com.example.carelyo.data.entity.Appointment
+import com.example.carelyo.data.entity.*
 import com.example.carelyo.data.session.SessionManager
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.async
-import com.example.carelyo.data.entity.UpcomingMedication
 import java.text.SimpleDateFormat
 import java.util.*
-import com.example.carelyo.data.entity.UpcomingVaccination
-import com.example.carelyo.data.entity.UpcomingAppointment
-import com.example.carelyo.data.entity.Reminder
 
 class DashboardViewModel(application: Application) : AndroidViewModel(application) {
     private val TAG = "DashboardViewModel"
@@ -44,10 +37,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val _upcomingAppointments = MutableLiveData<List<UpcomingAppointment>>()
     val upcomingAppointments: LiveData<List<UpcomingAppointment>> = _upcomingAppointments
 
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private val _childAllergies = MutableLiveData<List<Allergie>>()
+    val childAllergies: LiveData<List<Allergie>> = _childAllergies
 
     private val _unreadRemindersCount = MutableLiveData<Int>()
     val unreadRemindersCount: LiveData<Int> = _unreadRemindersCount
+
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     // Cache to avoid re-fetching if already loaded
     private var cachedChildren: List<Child>? = null
@@ -125,8 +121,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             _isLoading.postValue(false)
 
             if (children.isNotEmpty()) {
-                println("[$TAG]: Fetching data for first child: ${children[0].full_name}")
-                fetchUpcomingDataForChild(children[0].ChildID)
+                println("[$TAG]: Loading data for first child: ${children[0].full_name}")
+                // Fetch data for the first child by default
+                fetchAllDataForChild(children[0].ChildID)
             } else {
                 println("[$TAG]: No children found for this parent")
                 _errorMessage.postValue("No children registered for this account")
@@ -151,6 +148,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     }.decodeList<Reminder>()
 
                 _unreadRemindersCount.postValue(reminders.size)
+                println("[$TAG]: Unread reminders count: ${reminders.size}")
             } catch (e: Exception) {
                 println("[$TAG]: Error fetching reminders count: ${e.localizedMessage}")
                 _unreadRemindersCount.postValue(0)
@@ -183,28 +181,44 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
-    fun fetchUpcomingDataForChild(childId: Int) {
+    fun fetchAllDataForChild(childId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                println("[$TAG]: Fetching upcoming data for child: $childId")
+                println("[$TAG]: === FETCHING ALL DATA FOR CHILD ID: $childId ===")
 
                 val deferredVaccinations = async { fetchUpcomingVaccinations(childId) }
                 val deferredMedications = async { fetchUpcomingMedications(childId) }
                 val deferredAppointments = async { fetchUpcomingAppointments(childId) }
+                val deferredAllergies = async { fetchAllergies(childId) }
 
                 val vaccinations = deferredVaccinations.await()
                 val medications = deferredMedications.await()
                 val appointments = deferredAppointments.await()
+                val allergies = deferredAllergies.await()
 
-                println("[$TAG]: Found ${vaccinations.size} vaccines, ${medications.size} medications, ${appointments.size} appointments")
+                println("[$TAG]: === RESULTS FOR CHILD $childId ===")
+                println("[$TAG]: Vaccinations: ${vaccinations.size}")
+                vaccinations.forEach { println("[$TAG]:   - ${it.vaccineName} - ${it.dueDate}") }
+
+                println("[$TAG]: Medications: ${medications.size}")
+                medications.forEach { println("[$TAG]:   - ${it.medicationName} - ${it.scheduledTime}") }
+
+                println("[$TAG]: Appointments: ${appointments.size}")
+                appointments.forEach { println("[$TAG]:   - ${it.clinicName} - ${it.appointmentDate}") }
+
+                println("[$TAG]: Allergies: ${allergies.size}")
+                allergies.forEach { allergy ->
+                    println("[$TAG]:   - ${allergy.allergy_name} - ${allergy.severity}")
+                }
 
                 _upcomingVaccinations.postValue(vaccinations)
                 _upcomingMedications.postValue(medications)
                 _upcomingAppointments.postValue(appointments)
+                _childAllergies.postValue(allergies)
 
                 _isLoading.postValue(false)
             } catch (e: Exception) {
-                println("[$TAG]: Error fetching upcoming data: ${e.localizedMessage}")
+                println("[$TAG]: Error fetching all data: ${e.localizedMessage}")
                 e.printStackTrace()
                 _isLoading.postValue(false)
             }
@@ -213,26 +227,41 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
     private suspend fun fetchUpcomingVaccinations(childId: Int): List<UpcomingVaccination> {
         return try {
-            val childVaccines = SupabaseClient.client.postgrest["CHILD_VACCINE"]
-                .select { filter { eq("childid", childId) } }
-                .decodeList<com.example.carelyo.data.entity.ChildVaccine>()
+            println("[$TAG]: Fetching vaccinations for child $childId")
 
+            // First, get the child's vaccines
+            val childVaccines = SupabaseClient.client.postgrest["CHILD_VACCINE"]
+                .select {
+                    filter {
+                        eq("childid", childId)
+                    }
+                }.decodeList<ChildVaccine>()
+
+            println("[$TAG]: Found ${childVaccines.size} child vaccine records")
+            childVaccines.forEach { cv ->
+                println("[$TAG]:   - VaccineID: ${cv.VaccineID}, Status: ${cv.status}")
+            }
+
+            // Get all vaccines
             val allVaccines = SupabaseClient.client.postgrest["VACCINATION"]
                 .select()
-                .decodeList<com.example.carelyo.data.entity.Vaccination>()
+                .decodeList<Vaccination>()
+
+            println("[$TAG]: Found ${allVaccines.size} total vaccines in system")
 
             val upcomingVaccines = mutableListOf<UpcomingVaccination>()
             childVaccines.forEach { cv ->
-                if (cv.status == "Pending" || cv.status == "Overdue") {
+                // Check if vaccine is pending or overdue
+                if (cv.status == "Pending" || cv.status == "Overdue" || cv.status == "Complete") {
                     val vaccine = allVaccines.find { it.VaccineID == cv.VaccineID }
                     vaccine?.let {
-                        upcomingVaccines.add(
-                            UpcomingVaccination(
-                                vaccineName = it.vaccine_name ?: "Unknown Vaccine",
-                                dueDate = cv.administered_date,
-                                childId = childId
-                            )
+                        val vaccination = UpcomingVaccination(
+                            vaccineName = it.vaccine_name ?: "Unknown Vaccine",
+                            dueDate = cv.administered_date,
+                            childId = childId
                         )
+                        upcomingVaccines.add(vaccination)
+                        println("[$TAG]: Added vaccination: ${vaccination.vaccineName} - ${vaccination.dueDate}")
                     }
                 }
             }
@@ -240,12 +269,15 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             upcomingVaccines
         } catch (e: Exception) {
             println("[$TAG]: Error fetching vaccinations: ${e.localizedMessage}")
+            e.printStackTrace()
             emptyList()
         }
     }
 
     private suspend fun fetchUpcomingMedications(childId: Int): List<UpcomingMedication> {
         return try {
+            println("[$TAG]: Fetching medications for child $childId")
+
             val medications = SupabaseClient.client.postgrest["MEDICATION"]
                 .select {
                     filter {
@@ -253,6 +285,11 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         eq("is_active", true)
                     }
                 }.decodeList<Medication>()
+
+            println("[$TAG]: Found ${medications.size} active medications")
+            medications.forEach { med ->
+                println("[$TAG]:   - ${med.medication_name}, MedID: ${med.MedID}")
+            }
 
             val upcomingMeds = mutableListOf<UpcomingMedication>()
             val today = Date()
@@ -266,15 +303,17 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         .select { filter { eq("medid", med.MedID) } }
                         .decodeList<MedicationSchedule>()
 
+                    println("[$TAG]: Found ${schedules.size} schedules for medication ${med.medication_name}")
+
                     schedules.forEach { schedule ->
-                        upcomingMeds.add(
-                            UpcomingMedication(
-                                medicationName = med.medication_name ?: "Unknown",
-                                dosage = med.dosage,
-                                scheduledTime = schedule.scheduled_time,
-                                childId = childId
-                            )
+                        val upcomingMed = UpcomingMedication(
+                            medicationName = med.medication_name ?: "Unknown",
+                            dosage = med.dosage,
+                            scheduledTime = schedule.scheduled_time,
+                            childId = childId
                         )
+                        upcomingMeds.add(upcomingMed)
+                        println("[$TAG]: Added medication: ${upcomingMed.medicationName} at ${upcomingMed.scheduledTime}")
                     }
                 }
             }
@@ -282,21 +321,28 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
             upcomingMeds
         } catch (e: Exception) {
             println("[$TAG]: Error fetching medications: ${e.localizedMessage}")
+            e.printStackTrace()
             emptyList()
         }
     }
 
     private suspend fun fetchUpcomingAppointments(childId: Int): List<UpcomingAppointment> {
         return try {
+            println("[$TAG]: Fetching appointments for child $childId")
+
             val today = dateFormat.format(Date())
             val appointments = SupabaseClient.client.postgrest["APPOINTMENT"]
                 .select {
                     filter {
                         eq("childid", childId)
                         gte("appointment_date", today)
-                        eq("status", "Upcoming")
                     }
                 }.decodeList<Appointment>()
+
+            println("[$TAG]: Found ${appointments.size} upcoming appointments")
+            appointments.forEach { app ->
+                println("[$TAG]:   - ${app.clinic_name} on ${app.appointment_date}")
+            }
 
             appointments
                 .sortedBy { it.appointment_date }
@@ -310,13 +356,31 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 }
         } catch (e: Exception) {
             println("[$TAG]: Error fetching appointments: ${e.localizedMessage}")
+            e.printStackTrace()
             emptyList()
         }
     }
 
-    fun fetchChildGrowthData(childId: Int, callback: (weight: Float, height: Float) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            callback(0f, 0f)
+    private suspend fun fetchAllergies(childId: Int): List<Allergie> {
+        return try {
+            println("[$TAG]: Fetching allergies for child $childId")
+
+            val allergies = SupabaseClient.client.postgrest["ALLERGIE"]
+                .select {
+                    filter {
+                        eq("childid", childId)
+                    }
+                }.decodeList<Allergie>()
+
+            println("[$TAG]: Found ${allergies.size} allergies for child $childId")
+            allergies.forEach { allergy ->
+                println("[$TAG]:   - ${allergy.allergy_name} (${allergy.severity})")
+            }
+            allergies
+        } catch (e: Exception) {
+            println("[$TAG]: Error fetching allergies: ${e.localizedMessage}")
+            e.printStackTrace()
+            emptyList()
         }
     }
 

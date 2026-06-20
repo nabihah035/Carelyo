@@ -31,6 +31,8 @@ class MedicationAdapter(
         notifyDataSetChanged()
     }
 
+    fun getItems(): List<MedicationItem> = items
+
     inner class MedicationViewHolder(
         private val binding: ItemMedicationBinding
     ) : RecyclerView.ViewHolder(binding.root) {
@@ -42,7 +44,16 @@ class MedicationAdapter(
 
             binding.cbMedication.isChecked = item.isCompleted
             binding.cbMedication.setOnCheckedChangeListener { _, isChecked ->
-                onItemCheckChanged(item, isChecked)
+                // Update the item's completion status
+                val updatedItem = item.copy(isCompleted = isChecked)
+                // Update the item in the list
+                val index = items.indexOf(item)
+                if (index != -1) {
+                    val mutableList = items.toMutableList()
+                    mutableList[index] = updatedItem
+                    items = mutableList
+                }
+                onItemCheckChanged(updatedItem, isChecked)
             }
 
             // Strike through text if completed
