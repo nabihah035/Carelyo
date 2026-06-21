@@ -25,7 +25,7 @@
 
     <fragment
         android:id="@+id/navigation_doctor_summary"
-        android:name="com.example.carelyo.ui.medical.DoctorSummaryFragment"
+        android:name="com.example.carelyo.ui.summary.DoctorSummaryFragment"
         android:label="Doctor Summary"
         tools:layout="@layout/fragment_doctor_summary" />
 

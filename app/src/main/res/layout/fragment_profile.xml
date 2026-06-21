@@ -1,505 +1,241 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
+<androidx.core.widget.NestedScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://tools.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:paddingTop="25dp">
+    android:background="#F8F9FA"
+    android:fillViewport="true">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="16dp"
-        android:paddingBottom="32dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
-        <!-- Profile Header -->
         <TextView
-            android:id="@+id/tvProfileHeader"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Profile"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:textColor="#111111"
+            android:textSize="24sp"
+            android:textStyle="bold" />
 
-        <!-- Manage Account Link -->
         <TextView
-            android:id="@+id/tvManageAccount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Manage your account"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="14sp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:layout_marginTop="4dp"
+            android:text="Manage your account and children profiles"
+            android:textColor="#666666"
+            android:textSize="14sp" />
 
-        <!-- Profile Card Container -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cvProfile"
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
+            app:cardBackgroundColor="#009688"
             app:cardCornerRadius="16dp"
-            app:cardElevation="4dp"
-            app:layout_constraintTop_toBottomOf="@+id/tvProfileHeader">
+            app:strokeWidth="0dp">
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="16dp">
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="24dp">
 
-                <!-- Profile Icon Circle -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cvProfileIcon"
-                    android:layout_width="72dp"
-                    android:layout_height="72dp"
-                    app:cardCornerRadius="36dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="@color/purple_500"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent">
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:background="#FFFFFF"
+                    android:padding="16dp"
+                    android:src="@drawable/ic_person"
+                    app:tint="#009688" />
 
-                    <ImageView
-                        android:id="@+id/ivProfileIcon"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_person"
-                        app:tint="@android:color/white" />
-
-                </androidx.cardview.widget.CardView>
-
-                <!-- User Name -->
-                <TextView
-                    android:id="@+id/tvUserName"
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
-                    android:text="User Name"
-                    android:textSize="20sp"
-                    android:textStyle="bold"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/cvProfileIcon"
-                    app:layout_constraintTop_toTopOf="@+id/cvProfileIcon" />
+                    android:layout_weight="1"
+                    android:orientation="vertical">
 
-                <!-- User Email -->
-                <TextView
-                    android:id="@+id/tvUserEmail"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="user@example.com"
-                    android:layout_marginStart="16dp"
-                    android:textSize="14sp"
-                    android:textColor="@android:color/darker_gray"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/cvProfileIcon"
-                    app:layout_constraintTop_toBottomOf="@+id/tvUserName" />
+                    <TextView
+                        android:id="@+id/tvProfileName"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Hidayah binti Karim"
+                        android:textColor="#FFFFFF"
+                        android:textSize="20sp"
+                        android:textStyle="bold" />
 
-                <!-- User Phone -->
-                <TextView
-                    android:id="@+id/tvUserPhone"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="+1 234 567 8900"
-                    android:layout_marginStart="16dp"
-                    android:textSize="14sp"
-                    android:textColor="@android:color/darker_gray"
-                    app:layout_constraintEnd_toEndOf="parent"
-                    app:layout_constraintStart_toEndOf="@+id/cvProfileIcon"
-                    app:layout_constraintTop_toBottomOf="@+id/tvUserEmail" />
+                    <TextView
+                        android:id="@+id/tvProfileEmail"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="hidayah@example.com"
+                        android:textColor="#E0F2F1"
+                        android:textSize="14sp" />
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    <TextView
+                        android:id="@+id/tvProfilePhone"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="+60 11-2345 6789"
+                        android:textColor="#E0F2F1"
+                        android:textSize="14sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-        </androidx.cardview.widget.CardView>
-
-        <!-- My Children Header -->
-        <TextView
-            android:id="@+id/tvMyChildrenHeader"
-            android:layout_width="wrap_content"
+        <RelativeLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="My Children"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/cvProfile" />
+            android:layout_marginTop="24dp">
 
-        <!-- Add Child Button -->
-        <TextView
-            android:id="@+id/tvAddChild"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="+ Add"
-            android:textColor="@color/purple_500"
-            android:textSize="16sp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:padding="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="@+id/tvMyChildrenHeader"
-            app:layout_constraintBottom_toBottomOf="@+id/tvMyChildrenHeader" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:drawableStart="@drawable/ic_child_face"
+                android:drawablePadding="8dp"
+                android:text="My Children"
+                android:textColor="#111111"
+                android:drawableTint="@color/black"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-        <!-- Children Container (RecyclerView) -->
+            <TextView
+                android:id="@+id/tvAddChild"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:text="+ Add"
+                android:textColor="#009688"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </RelativeLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvChildren"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            app:layout_constraintTop_toBottomOf="@+id/tvMyChildrenHeader"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            android:nestedScrollingEnabled="false"
+            tools:itemCount="2"
+            tools:listitem="@layout/item_child" />
 
-        <!-- Settings Header -->
         <TextView
-            android:id="@+id/tvSettingsHeader"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            android:text="Settings"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/rvChildren" />
-
-        <!-- Notifications Card -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cvNotifications"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            app:layout_constraintTop_toBottomOf="@+id/tvSettingsHeader">
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackground">
-
-                <!-- Bell Icon Circle -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cvBellIcon"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="#FFF3E0"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_notifications"
-                        app:tint="#FF9800" />
-
-                </androidx.cardview.widget.CardView>
-
-                <!-- Notifications Text -->
-                <TextView
-                    android:id="@+id/tvNotificationsTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="Notifications"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    app:layout_constraintStart_toEndOf="@+id/cvBellIcon"
-                    app:layout_constraintTop_toTopOf="@+id/cvBellIcon"
-                    app:layout_constraintEnd_toEndOf="parent" />
-
-                <TextView
-                    android:id="@+id/tvNotificationsSubtitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="Manage reminders and alerts"
-                    android:textSize="13sp"
-                    android:textColor="@android:color/darker_gray"
-                    app:layout_constraintStart_toEndOf="@+id/cvBellIcon"
-                    app:layout_constraintTop_toBottomOf="@+id/tvNotificationsTitle"
-                    app:layout_constraintEnd_toEndOf="parent" />
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-        </androidx.cardview.widget.CardView>
-
-        <!-- Privacy & Security Card -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cvPrivacySecurity"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            app:layout_constraintTop_toBottomOf="@+id/cvNotifications">
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackground">
-
-                <!-- Shield Icon Circle -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cvShieldIcon"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="#E8F5E9"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_shield"
-                        app:tint="#4CAF50" />
-
-                </androidx.cardview.widget.CardView>
-
-                <!-- Privacy & Security Text -->
-                <TextView
-                    android:id="@+id/tvPrivacyTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="Privacy &amp; Security"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    app:layout_constraintStart_toEndOf="@+id/cvShieldIcon"
-                    app:layout_constraintTop_toTopOf="@+id/cvShieldIcon"
-                    app:layout_constraintEnd_toEndOf="parent" />
-
-                <TextView
-                    android:id="@+id/tvPrivacySubtitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="Data and account security"
-                    android:layout_marginStart="16dp"
-                    android:textSize="13sp"
-                    android:textColor="@android:color/darker_gray"
-                    app:layout_constraintStart_toEndOf="@+id/cvShieldIcon"
-                    app:layout_constraintTop_toBottomOf="@+id/tvPrivacyTitle"
-                    app:layout_constraintEnd_toEndOf="parent" />
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-        </androidx.cardview.widget.CardView>
-
-        <!-- App Settings Card -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cvAppSettings"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            app:layout_constraintTop_toBottomOf="@+id/cvPrivacySecurity">
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackground">
-
-                <!-- Settings Icon Circle -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cvSettingsIcon"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="#E3F2FD"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_settings"
-                        app:tint="#2196F3" />
-
-                </androidx.cardview.widget.CardView>
-
-                <!-- App Settings Text -->
-                <TextView
-                    android:id="@+id/tvAppSettingsTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="App settings"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    app:layout_constraintStart_toEndOf="@+id/cvSettingsIcon"
-                    app:layout_constraintTop_toTopOf="@+id/cvSettingsIcon"
-                    app:layout_constraintEnd_toEndOf="parent" />
-
-                <TextView
-                    android:id="@+id/tvAppSettingsSubtitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:text="Language, theme and more"
-                    android:layout_marginStart="16dp"
-                    android:textSize="13sp"
-                    android:textColor="@android:color/darker_gray"
-                    app:layout_constraintStart_toEndOf="@+id/cvSettingsIcon"
-                    app:layout_constraintTop_toBottomOf="@+id/tvAppSettingsTitle"
-                    app:layout_constraintEnd_toEndOf="parent" />
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-        </androidx.cardview.widget.CardView>
-
-        <!-- Help & Support Header -->
-        <TextView
-            android:id="@+id/tvHelpSupportHeader"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Help &amp; Support"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/cvAppSettings" />
+            android:text="Settings"
+            android:textColor="#111111"
+            android:textSize="18sp"
+            android:textStyle="bold" />
 
-        <!-- FAQs and Contact Support Card -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cvHelpSupport"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardHelpSupport"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
-            app:layout_constraintTop_toBottomOf="@+id/tvHelpSupportHeader">
-
-            <androidx.constraintlayout.widget.ConstraintLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:padding="16dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:background="?attr/selectableItemBackground">
-
-                <!-- Help Icon Circle -->
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cvHelpIcon"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="#FCE4EC"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:layout_gravity="center"
-                        android:src="@drawable/ic_help"
-                        app:tint="#E91E63" />
-
-                </androidx.cardview.widget.CardView>
-
-                <!-- Help & Support Text -->
-                <TextView
-                    android:id="@+id/tvHelpTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="FAQs and contact support"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    app:layout_constraintStart_toEndOf="@+id/cvHelpIcon"
-                    app:layout_constraintTop_toTopOf="@+id/cvHelpIcon"
-                    app:layout_constraintEnd_toEndOf="parent" />
-
-            </androidx.constraintlayout.widget.ConstraintLayout>
-
-        </androidx.cardview.widget.CardView>
-
-        <!-- Logout Button -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/cvLogout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="32dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="2dp"
+            android:layout_marginBottom="12dp"
             android:clickable="true"
             android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:layout_constraintTop_toBottomOf="@+id/cvHelpSupport">
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="16dp"
+            app:strokeWidth="0dp"
+            app:rippleColor="#0F000000">
 
-            <androidx.constraintlayout.widget.ConstraintLayout
+            <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:padding="16dp">
 
-                <androidx.cardview.widget.CardView
-                    android:id="@+id/cvLogoutIcon"
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/ivIconContainer"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    app:cardCornerRadius="24dp"
-                    app:cardElevation="0dp"
-                    app:cardBackgroundColor="#FFEBEE"
-                    app:layout_constraintStart_toStartOf="parent"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintBottom_toBottomOf="parent">
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    app:cardBackgroundColor="#F4F5F7"
+                    app:cardCornerRadius="12dp"
+                    app:strokeWidth="0dp">
 
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
                         android:layout_gravity="center"
-                        android:src="@drawable/ic_logout"
-                        app:tint="#F44336" />
+                        android:src="@drawable/ic_help_outline"
+                        app:tint="#4A5568" />
+                </com.google.android.material.card.MaterialCardView>
 
-                </androidx.cardview.widget.CardView>
-
-                <TextView
-                    android:id="@+id/tvLogoutTitle"
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:layout_toStartOf="@id/ivChevronRight"
+                    android:layout_toEndOf="@id/ivIconContainer"
                     android:layout_marginStart="16dp"
-                    android:text="Logout"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="#F44336"
-                    app:layout_constraintStart_toEndOf="@+id/cvLogoutIcon"
-                    app:layout_constraintTop_toTopOf="@+id/cvLogoutIcon"
-                    app:layout_constraintEnd_toEndOf="parent" />
+                    android:layout_marginEnd="16dp"
+                    android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/tvLogoutSubtitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:text="Sign out of your account"
-                    android:textSize="13sp"
-                    android:textColor="@android:color/darker_gray"
-                    app:layout_constraintStart_toEndOf="@+id/cvLogoutIcon"
-                    app:layout_constraintTop_toBottomOf="@+id/tvLogoutTitle"
-                    app:layout_constraintEnd_toEndOf="parent" />
+                    <TextView
+                        android:id="@+id/tvSettingTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Help &amp; Support"
+                        android:textColor="#0F172A"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
 
-            </androidx.constraintlayout.widget.ConstraintLayout>
+                    <TextView
+                        android:id="@+id/tvSettingSubtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="FAQs and contact support"
+                        android:textColor="#64748B"
+                        android:textSize="14sp" />
+                </LinearLayout>
 
-        </androidx.cardview.widget.CardView>
+                <ImageView
+                    android:id="@+id/ivChevronRight"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="#94A3B8" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
-</ScrollView>
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnLogOut"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="24dp"
+            android:text="Log Out"
+            android:textColor="#E53935"
+            app:cornerRadius="12dp"
+            app:icon="@drawable/ic_logout"
+            app:iconGravity="textStart"
+            app:iconTint="#E53935"
+            app:strokeColor="#FFCDD2" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:text="Carelyo v1.0.0 | Made with ♥ for Malaysian families"
+            android:textColor="#999999"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -34,4 +34,6 @@
     <color name="button_unselected">#F1F5F9</color>
     <color name="button_text_selected">#FFFFFF</color>
     <color name="button_text_unselected">#334155</color>
+
+    <color name="unread_background">#F4FBF9</color>
 </resources>

@@ -10,16 +10,19 @@ import com.example.carelyo.agent.infra.CarelyoMessage
 import com.example.carelyo.agent.infra.CarelyoMessageBroker
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.entity.ChildVaccine
+import com.example.carelyo.data.entity.Reminder
 import com.example.carelyo.data.entity.Vaccination
 import com.example.carelyo.api.supabase.SupabaseClient
+import com.example.carelyo.data.session.SessionManager
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import android.widget.Toast
-
 
 class VaccineViewModel(application: Application) : AndroidViewModel(application), CarelyoAgent {
 
@@ -47,6 +50,7 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
 
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val dbDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val dbDateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX")
 
     init {
         CarelyoMessageBroker.registerAgent(this)
@@ -95,7 +99,6 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                     )
                 }
 
-                // Fetch vaccines directly
                 if (allVaccinations.isEmpty()) {
                     allVaccinations = SupabaseClient.client.postgrest["VACCINATION"]
                         .select()
@@ -137,6 +140,10 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                     allChildVaccines = allChildVaccines + result
                     _availableVaccines.postValue(allVaccinations)
                     recalculate()
+
+                    // Create reminder for this vaccine
+                    createVaccineReminder(result)
+
                     Toast.makeText(getApplication(), "Vaccine added successfully!", Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
@@ -145,20 +152,67 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    private fun createVaccineReminder(childVaccine: ChildVaccine) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Get child info
+                val child = allChildren.find { it.ChildID == childVaccine.ChildID }
+                val vaccine = allVaccinations.find { it.VaccineID == childVaccine.VaccineID }
+
+                if (child == null || vaccine == null) return@launch
+
+                // Check if reminder already exists for this vaccine
+                val existingReminders = SupabaseClient.client.postgrest["REMINDER"]
+                    .select {
+                        filter { eq("childid", childVaccine.ChildID ?: 0) }
+                        filter { eq("reference_id", vaccine.VaccineID) }
+                        filter { eq("reminder_type", "vaccine") }
+                    }
+                    .decodeList<Reminder>()
+
+                // Create reminder only if it doesn't exist
+                if (existingReminders.isEmpty()) {
+                    val scheduledAt = if (childVaccine.administered_at != null) {
+                        childVaccine.administered_at
+                    } else {
+                        // If not administered yet, schedule for future
+                        LocalDateTime.now().plusDays(7).format(dbDateTimeFormatter)
+                    }
+
+                    val reminder = Reminder(
+                        ChildID = childVaccine.ChildID ?: 0,
+                        ParentID = parentId,
+                        reminder_type = "vaccine",
+                        reference_id = vaccine.VaccineID,
+                        scheduled_at = scheduledAt,
+                        is_sent = false
+                    )
+
+                    SupabaseClient.client.postgrest["REMINDER"]
+                        .insert(reminder)
+                }
+            } catch (e: Exception) {
+                // Log error but don't fail the vaccine addition
+                e.printStackTrace()
+            }
+        }
+    }
+
     fun markVaccineAsTaken(childId: Int, vaccineId: Int, notes: String) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Find existing record
                 val existingRecord = allChildVaccines.find {
                     it.ChildID == childId && it.VaccineID == vaccineId
                 }
 
                 if (existingRecord != null) {
-                    // Update existing record
                     val today = LocalDate.now().format(dateFormatter)
+                    val now = LocalDateTime.now().atZone(ZoneId.systemDefault()).format(dbDateTimeFormatter)
+
                     val updatedRecord = existingRecord.copy(
                         status = "Done",
                         administered_date = today,
+                        administered_at = now,
                         notes = if (existingRecord.notes?.isNotEmpty() == true)
                             "${existingRecord.notes}\n$notes"
                         else notes
@@ -171,18 +225,19 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                             }
                         }
 
-                    // Update local cache
                     allChildVaccines = allChildVaccines.map {
                         if (it.ChildVaccineID == existingRecord.ChildVaccineID) updatedRecord else it
                     }
                 } else {
-                    // Create new record
                     val today = LocalDate.now().format(dateFormatter)
+                    val now = LocalDateTime.now().atZone(ZoneId.systemDefault()).format(dbDateTimeFormatter)
+
                     val newRecord = ChildVaccine(
                         ChildID = childId,
                         VaccineID = vaccineId,
                         status = "Done",
                         administered_date = today,
+                        administered_at = now,
                         notes = notes
                     )
 
@@ -193,13 +248,42 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
 
                     if (result != null) {
                         allChildVaccines = allChildVaccines + result
+                        // Create reminder when marking as taken
+                        createVaccineReminder(result)
                     }
                 }
+
+                // Mark associated reminders as sent/read
+                markRemindersAsSent(childId, vaccineId)
 
                 recalculate()
                 Toast.makeText(getApplication(), "Vaccine marked as taken!", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 _vaccineState.postValue(VaccineState.Error(e.message ?: "Failed to update vaccine"))
+            }
+        }
+    }
+
+    private fun markRemindersAsSent(childId: Int, vaccineId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val reminders = SupabaseClient.client.postgrest["REMINDER"]
+                    .select {
+                        filter { eq("childid", childId) }
+                        filter { eq("reference_id", vaccineId) }
+                        filter { eq("reminder_type", "vaccine") }
+                    }
+                    .decodeList<Reminder>()
+
+                for (reminder in reminders) {
+                    val updatedReminder = reminder.copy(is_sent = true)
+                    SupabaseClient.client.postgrest["REMINDER"]
+                        .update(updatedReminder) {
+                            filter { eq("remindid", reminder.RemindID) }
+                        }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
@@ -218,8 +302,7 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                 _isFormReady.postValue(true)
             }
             "INFORM_CHILD_VACCINE_ADD_SUCCESS" -> {
-                // Refresh data
-                val sessionManager = com.example.carelyo.data.session.SessionManager(getApplication())
+                val sessionManager = SessionManager(getApplication())
                 val user = sessionManager.getUserSession()
                 user?.let {
                     requestVaccinationData(it.UserID)
@@ -252,10 +335,8 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                     val birthDate = parseDate(child.date_of_birth) ?: continue
                     val ageInMonths = ChronoUnit.MONTHS.between(birthDate, currentDate).toInt()
 
-                    // Get all vaccines
                     val allVaccinesForChild = allVaccinations.sortedBy { it.recommended_age_weeks }
 
-                    // Build schedule items
                     for (vaccine in allVaccinesForChild) {
                         val cv = allChildVaccines.find { it.ChildID == child.ChildID && it.VaccineID == vaccine.VaccineID }
 

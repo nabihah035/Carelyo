@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.example.carelyo.R
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.databinding.ItemChildBinding
 import java.text.SimpleDateFormat
@@ -36,41 +37,62 @@ class ChildrenAdapter(
         fun bind(child: Child) {
             binding.tvChildName.text = child.full_name ?: "Unknown"
 
-            // Calculate age from date of birth
-            val age = calculateAge(child.date_of_birth)
-            binding.tvChildAge.text = if (age != null) "$age years old" else "Age unknown"
-
             // Format date of birth
             val formattedDob = formatDateOfBirth(child.date_of_birth)
             binding.tvChildDob.text = "Born: $formattedDob"
+
+            // Set child details (gender and blood type)
+            val details = buildString {
+                if (!child.gender.isNullOrEmpty()) {
+                    append(child.gender)
+                }
+                if (!child.blood_type.isNullOrEmpty()) {
+                    if (isNotEmpty()) append(" • ")
+                    append(child.blood_type)
+                }
+                // Add weight if available
+                if (child.weight != null) {
+                    if (isNotEmpty()) append(" • ")
+                    append("${child.weight}kg")
+                }
+                // Add height if available
+                if (child.height != null) {
+                    if (isNotEmpty()) append(" • ")
+                    append("${child.height}cm")
+                }
+                if (isEmpty()) {
+                    append("No details")
+                }
+            }
+            binding.tvChildDetails.text = details
+
+            // Set appropriate avatar based on gender
+            val avatarRes = when (child.gender?.lowercase()) {
+                "female" -> R.drawable.ic_avatar_female
+                "male" -> R.drawable.ic_avatar_male
+                else -> R.drawable.ic_person
+            }
+            binding.ivChildAvatar.setImageResource(avatarRes)
 
             binding.root.setOnClickListener {
                 onChildClick(child)
             }
         }
 
-        private fun calculateAge(dateOfBirth: String?): Int? {
-            if (dateOfBirth.isNullOrEmpty()) return null
-            return try {
-                val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                val birthDate = format.parse(dateOfBirth)
-                val currentDate = Date()
-                val ageInMillis = currentDate.time - birthDate?.time!! ?: return null
-                val ageInYears = (ageInMillis / (1000L * 60 * 60 * 24 * 365)).toInt()
-                ageInYears
-            } catch (e: Exception) {
-                null
-            }
-        }
-
         private fun formatDateOfBirth(dateOfBirth: String?): String {
             if (dateOfBirth.isNullOrEmpty()) return "Unknown"
             return try {
+                // Handle both yyyy-MM-dd format (from database)
                 val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val outputFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
                 val date = inputFormat.parse(dateOfBirth)
-                outputFormat.format(date ?: Date())
+                if (date != null) {
+                    outputFormat.format(date)
+                } else {
+                    dateOfBirth
+                }
             } catch (e: Exception) {
+                // If parsing fails, return original
                 dateOfBirth
             }
         }

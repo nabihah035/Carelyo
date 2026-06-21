@@ -34,7 +34,17 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 }
             }
 
-            // ── NEW HOOK: HANDLE ADD CHILD REQUESTS FROM PROFILE ──
+            "REQUEST_CHILD_DATA" -> {
+                val parentId = message.content["parentId"] as? Int
+                if (parentId != null && parentId > 0) {
+                    println("[$agentName]: Received request to fetch children for parent ID: $parentId")
+                    fetchChildProfilesForParent(parentId)
+                } else {
+                    println("[$agentName]: Invalid parent ID in REQUEST_CHILD_DATA")
+                    broadcastError("Invalid parent ID")
+                }
+            }
+
             "REQUEST_ADD_CHILD" -> {
                 val child = message.content["child"] as? Child
                 if (child != null) {
@@ -42,6 +52,7 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     insertChildRecord(child)
                 } else {
                     println("[$agentName]: Received invalid or null child payload inside REQUEST_ADD_CHILD")
+                    broadcastError("Invalid child data")
                 }
             }
         }
@@ -50,11 +61,24 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
     private fun insertChildRecord(child: Child) {
         scope.launch(Dispatchers.IO) {
             try {
-                // Postgrest auto-strips the 0-value ChildID column and relies on identity generation rules
-                SupabaseClient.client.postgrest["CHILD"].insert(child)
-                println("[$agentName]: Successfully appended new child record to DB database.")
+                // Create a copy with only the fields we want to insert
+                // The database will auto-generate childid
+                val childToInsert = mapOf(
+                    "parent_id" to child.Parent_ID,
+                    "full_name" to child.full_name,
+                    "date_of_birth" to child.date_of_birth,
+                    "gender" to child.gender,
+                    "blood_type" to child.blood_type,
+                    "weight" to child.weight?.toString(),
+                    "height" to child.height?.toString(),
+                    "profile_photo_url" to child.profile_photo_url
+                )
 
-                // Refresh the entire parent collection stack so your active UI flows updates instantly
+                // Insert using the map to ensure proper column mapping
+                SupabaseClient.client.postgrest["CHILD"].insert(childToInsert)
+                println("[$agentName]: Successfully inserted new child record into database.")
+
+                // Refresh the parent collection stack so UI updates instantly
                 fetchChildProfilesForParent(child.Parent_ID)
 
                 // Notify via Broadcast that child registration completed cleanly
@@ -67,7 +91,7 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     )
                 )
             } catch (e: Exception) {
-                println("[$agentName]: Failed to write child entity parameters: ${e.localizedMessage}")
+                println("[$agentName]: Failed to insert child record: ${e.localizedMessage}")
                 broadcastError("Failed to save child data: ${e.localizedMessage}")
             }
         }
@@ -77,7 +101,7 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
         scope.launch(Dispatchers.IO) {
             try {
                 val result = SupabaseClient.client.postgrest["CHILD"].select {
-                    filter { eq("Parent_ID", parentId) }
+                    filter { eq("parent_id", parentId) }
                 }
                 val childrenList = result.decodeList<Child>()
 
@@ -101,7 +125,7 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
         CarelyoMessageBroker.passMessage(
             CarelyoMessage(
                 sender = agentName,
-                receiver = "DashboardViewModelAgent",
+                receiver = "BROADCAST",
                 messageType = "CHILD_FETCH_ERROR",
                 content = mapOf("reason" to reason)
             )
