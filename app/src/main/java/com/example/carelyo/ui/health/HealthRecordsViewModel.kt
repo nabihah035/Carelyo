@@ -360,10 +360,6 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
         return _childrenList.value?.find { it.ChildID == childId }?.full_name
     }
 
-    fun getChildById(childId: Int): Child? {
-        return _childrenList.value?.find { it.ChildID == childId }
-    }
-
     fun getDoctorVisitForHistory(history: MedicalHistory): DoctorVisit? {
         return allDoctorVisits.find {
             it.ChildID == history.ChildID &&

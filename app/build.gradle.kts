@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.cardview)
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
     //FIREBASE
     implementation(libs.firebase.messaging)

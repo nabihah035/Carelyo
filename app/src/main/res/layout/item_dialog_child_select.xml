@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/cvChildContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardBackgroundColor="#F8F9FA"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- Avatar Image Container -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cvAvatarContainer"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_alignParentStart="true"
+            android:layout_centerVertical="true"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp">
+
+            <ImageView
+                android:id="@+id/ivChildAvatar"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_avatar_male"
+                tools:ignore="ContentDescription" />
+        </androidx.cardview.widget.CardView>
+
+        <!-- Child Details Text Group -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="14dp"
+            android:layout_toStartOf="@id/ivCheckSelection"
+            android:layout_toEndOf="@id/cvAvatarContainer"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvChildName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#111B21"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="Aisyah Binti Ahmad" />
+
+            <TextView
+                android:id="@+id/tvChildAge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="#667781"
+                android:textSize="13sp"
+                tools:text="2 years 3 months" />
+        </LinearLayout>
+
+        <!-- Selected State Indicator Check Circle -->
+        <ImageView
+            android:id="@+id/ivCheckSelection"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:src="@drawable/ic_check_circle"
+            android:visibility="visible"
+            app:tint="#009688"
+            tools:visibility="visible" />
+
+    </RelativeLayout>
+</androidx.cardview.widget.CardView>
