@@ -12,7 +12,6 @@
         android:layout_width="16dp"
         android:layout_height="16dp"
         android:src="@android:drawable/checkbox_on_background"
-        app:tint="#20B2AA"
         tools:ignore="ContentDescription" />
 
     <TextView

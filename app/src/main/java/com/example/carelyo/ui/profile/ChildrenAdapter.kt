@@ -13,7 +13,8 @@ import java.util.Date
 import java.util.Locale
 
 class ChildrenAdapter(
-    private val onChildClick: (Child) -> Unit
+    private val onChildClick: (Child) -> Unit,
+    private val onDeleteClick: (Child) -> Unit
 ) : ListAdapter<Child, ChildrenAdapter.ChildViewHolder>(ChildDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChildViewHolder {
@@ -22,7 +23,7 @@ class ChildrenAdapter(
             parent,
             false
         )
-        return ChildViewHolder(binding, onChildClick)
+        return ChildViewHolder(binding, onChildClick, onDeleteClick)
     }
 
     override fun onBindViewHolder(holder: ChildViewHolder, position: Int) {
@@ -31,7 +32,8 @@ class ChildrenAdapter(
 
     class ChildViewHolder(
         private val binding: ItemChildBinding,
-        private val onChildClick: (Child) -> Unit
+        private val onChildClick: (Child) -> Unit,
+        private val onDeleteClick: (Child) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(child: Child) {
@@ -69,13 +71,16 @@ class ChildrenAdapter(
             // Set appropriate avatar based on gender
             val avatarRes = when (child.gender?.lowercase()) {
                 "female" -> R.drawable.ic_avatar_female
-                "male" -> R.drawable.ic_avatar_male
+                "male" -> R.drawable.ic_avatar_male1
                 else -> R.drawable.ic_person
             }
             binding.ivChildAvatar.setImageResource(avatarRes)
 
             binding.root.setOnClickListener {
                 onChildClick(child)
+            }
+            binding.btnDeleteChild.setOnClickListener {
+                onDeleteClick(child)
             }
         }
 

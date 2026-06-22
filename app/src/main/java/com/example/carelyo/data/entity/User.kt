@@ -13,5 +13,6 @@ data class User(
     val phone_number: String? = null,
     val role: String?,
     val created_at: String? = null,
-    val updated_at: String? = null
+    val updated_at: String? = null,
+    val notification_permission: Boolean? = null
 )

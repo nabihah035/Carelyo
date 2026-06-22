@@ -14,10 +14,10 @@ data class Child(
     val gender: String? = null,
     val blood_type: String? = null,
     @SerialName("weight")
-    val weight: Double? = null,
+    val weight: String? = null,
     @SerialName("height")
-    val height: Double? = null,
-    val profile_photo_url: String? = null,
+    val height: String? = null,
     val created_at: String? = null,
-    val updated_at: String? = null
+    val updated_at: String? = null,
+    val status: String? = null
 )

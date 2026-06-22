@@ -8,16 +8,11 @@
     android:background="#F8F9FA"
     tools:context=".ui.summary.DoctorSummaryFragment">
 
-    <androidx.core.widget.NestedScrollView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:fillViewport="true">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+        android:orientation="vertical"
+        android:padding="16dp">
 
             <TextView
                 android:id="@+id/tvHeaderTitle"
@@ -178,16 +173,21 @@
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvPreviousSummaries"
+            <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+                android:id="@+id/swipeRefreshLayout"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false"
-                tools:itemCount="2"
-                tools:listitem="@layout/item_list_summaries" />
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvPreviousSummaries"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    tools:itemCount="2"
+                    tools:listitem="@layout/item_list_summaries" />
+            </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
 
     <ProgressBar
         android:id="@+id/progressBar"

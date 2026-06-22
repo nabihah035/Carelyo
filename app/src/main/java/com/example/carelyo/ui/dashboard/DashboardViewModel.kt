@@ -143,7 +143,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     .select {
                         filter {
                             eq("parentid", parentId)
-                            eq("is_sent", false)
+                            eq("noti_status", "Unread")
                         }
                     }.decodeList<Reminder>()
 

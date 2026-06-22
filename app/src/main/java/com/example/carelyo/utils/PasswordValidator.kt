@@ -1,4 +1,4 @@
-package com.example.carelyo.util
+package com.example.carelyo.utils
 
 object PasswordValidator {
 

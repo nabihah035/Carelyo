@@ -21,7 +21,6 @@ class ReminderService(private val application: Application) {
         childId: Int,
         parentId: Int,
         reminderType: String,
-        referenceId: Int,
         scheduledAt: String
     ): Boolean {
         return try {
@@ -29,7 +28,6 @@ class ReminderService(private val application: Application) {
                 ChildID = childId,
                 ParentID = parentId,
                 reminder_type = reminderType,
-                reference_id = referenceId,
                 scheduled_at = scheduledAt,
                 is_sent = false
             )
@@ -61,7 +59,7 @@ class ReminderService(private val application: Application) {
                     .firstOrNull()
             }
             reminder?.let {
-                val updatedReminder = it.copy(is_sent = true)
+                val updatedReminder = it.copy(noti_status = "Read", is_sent = true)
                 withContext(Dispatchers.IO) {
                     SupabaseClient.client.postgrest["REMINDER"]
                         .update(updatedReminder) {
@@ -85,7 +83,7 @@ class ReminderService(private val application: Application) {
                 SupabaseClient.client.postgrest["REMINDER"]
                     .select {
                         filter { eq("parentid", parentId) }
-                        filter { eq("is_sent", false) }
+                        filter { eq("noti_status", "Unread") }
                         order("created_at", Order.DESCENDING)
                     }
                     .decodeList<Reminder>()
@@ -105,6 +103,7 @@ class ReminderService(private val application: Application) {
                 SupabaseClient.client.postgrest["REMINDER"]
                     .select {
                         filter { eq("parentid", parentId) }
+                        filter { neq("noti_status", "Delete") }
                         order("created_at", Order.DESCENDING)
                     }
                     .decodeList<Reminder>()
@@ -115,25 +114,6 @@ class ReminderService(private val application: Application) {
         }
     }
 
-    /**
-     * Deletes reminders for a specific reference
-     */
-    suspend fun deleteRemindersForReference(referenceId: Int, reminderType: String, childId: Int): Boolean {
-        return try {
-            withContext(Dispatchers.IO) {
-                SupabaseClient.client.postgrest["REMINDER"]
-                    .delete {
-                        filter { eq("reference_id", referenceId) }
-                        filter { eq("reminder_type", reminderType) }
-                        filter { eq("childid", childId) }
-                    }
-                true
-            }
-        } catch (e: Exception) {
-            Log.e("ReminderService", "Failed to delete reminders", e)
-            false
-        }
-    }
 
     /**
      * Deletes a specific reminder by ID
@@ -141,10 +121,17 @@ class ReminderService(private val application: Application) {
     suspend fun deleteReminder(remindId: Int): Boolean {
         return try {
             withContext(Dispatchers.IO) {
-                SupabaseClient.client.postgrest["REMINDER"]
-                    .delete {
-                        filter { eq("remindid", remindId) }
-                    }
+                val reminder = SupabaseClient.client.postgrest["REMINDER"]
+                    .select { filter { eq("remindid", remindId) } }
+                    .decodeList<Reminder>()
+                    .firstOrNull()
+                reminder?.let {
+                    val updatedReminder = it.copy(noti_status = "Delete")
+                    SupabaseClient.client.postgrest["REMINDER"]
+                        .update(updatedReminder) {
+                            filter { eq("remindid", remindId) }
+                        }
+                }
                 true
             }
         } catch (e: Exception) {

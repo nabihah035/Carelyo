@@ -46,15 +46,22 @@ class ReminderActivity : AppCompatActivity() {
 
         // Load reminders
         loadReminders()
+
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            loadReminders()
+        }
     }
 
     private fun setupRecyclerView() {
         adapter = ReminderAdapter(
             onDismissClick = { reminder ->
-                viewModel.deleteReminder(reminder)
+                showDeleteWarningDialog(reminder)
             },
             onItemClick = { reminder ->
                 // Optional: Handle item click to view details
+            },
+            onMarkAsReadClick = { reminder ->
+                viewModel.markAsRead(reminder)
             }
         )
         binding.rvReminders.apply {
@@ -75,6 +82,30 @@ class ReminderActivity : AppCompatActivity() {
         }
     }
 
+    private fun showDeleteWarningDialog(reminder: Reminder) {
+        val dialogView = layoutInflater.inflate(R.layout.warning_delete, null)
+        val dialog = android.app.Dialog(this)
+        dialog.setContentView(dialogView)
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        
+        // Optional blurred background effect logic can go here (or simple dim)
+        dialog.window?.setDimAmount(0.8f)
+
+        val btnCancel = dialogView.findViewById<android.view.View>(R.id.btnCancelDelete)
+        val btnConfirm = dialogView.findViewById<android.view.View>(R.id.btnConfirmDelete)
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        btnConfirm.setOnClickListener {
+            viewModel.deleteReminder(reminder)
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
     private fun observeViewModel() {
         // Observe reminders list
         viewModel.reminders.observe(this) { reminders ->
@@ -89,7 +120,9 @@ class ReminderActivity : AppCompatActivity() {
 
         // Observe loading state
         viewModel.isLoading.observe(this) { isLoading ->
-            // Show/hide loading indicator if needed
+            if (!isLoading) {
+                binding.swipeRefreshLayout.isRefreshing = false
+            }
         }
 
         // Observe operation results

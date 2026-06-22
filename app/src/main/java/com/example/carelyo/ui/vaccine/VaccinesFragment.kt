@@ -84,12 +84,12 @@ class VaccinesFragment : Fragment() {
             if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
 
             when (checkedIds.first()) {
-                R.id.chipAll -> scheduleAdapter.filterByStatus(null)
                 R.id.chipDone -> scheduleAdapter.filterByStatus(VaccineStatus.DONE)
                 R.id.chipUpcoming -> scheduleAdapter.filterByStatus(VaccineStatus.UPCOMING)
                 R.id.chipOverdue -> scheduleAdapter.filterByStatus(VaccineStatus.OVERDUE)
             }
         }
+        scheduleAdapter.filterByStatus(VaccineStatus.DONE)
     }
 
     private fun setupAddButton() {
@@ -306,7 +306,7 @@ class VaccinesFragment : Fragment() {
         // Setup status spinner
         val statusSpinner = dialog.findViewById<android.widget.Spinner>(R.id.spinnerStatus)
         if (statusSpinner != null) {
-            val statusOptions = arrayOf("Done", "Upcoming", "Overdue")
+            val statusOptions = arrayOf("Done", "Upcoming")
             val adapter = android.widget.ArrayAdapter(
                 requireContext(),
                 android.R.layout.simple_spinner_item,
@@ -423,6 +423,13 @@ class VaccinesFragment : Fragment() {
         // Get status
         val statusSpinner = dialog.findViewById<android.widget.Spinner>(R.id.spinnerStatus)
         val selectedStatus = statusSpinner?.selectedItem?.toString() ?: "Done"
+
+        if (selectedStatus == "Upcoming") {
+            if (dateTime.isBefore(java.time.LocalDateTime.now())) {
+                Toast.makeText(requireContext(), "Upcoming vaccine must be scheduled in the future", Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
 
         // Get notes
         val notesEditText = dialog.findViewById<android.widget.EditText>(R.id.etVaccineNotes)

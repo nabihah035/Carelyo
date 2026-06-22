@@ -58,6 +58,10 @@ class HealthRecordsFragment : Fragment() {
         setupAddButtons()
 
         viewModel.loadHealthData()
+
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            viewModel.loadHealthData()
+        }
     }
 
     private fun setupRecyclerViews() {
@@ -88,6 +92,9 @@ class HealthRecordsFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.progressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
+            if (!isLoading) {
+                binding.swipeRefreshLayout.isRefreshing = false
+            }
         }
 
         viewModel.errorMessage.observe(viewLifecycleOwner) { message ->
@@ -433,20 +440,31 @@ class HealthRecordsFragment : Fragment() {
     }
 
     private fun showDeleteConfirmation(allergy: Allergie) {
-        android.app.AlertDialog.Builder(requireContext())
-            .setTitle("Delete Allergy")
-            .setMessage("Are you sure you want to delete '${allergy.allergy_name}'?")
-            .setPositiveButton("Delete") { _, _ ->
-                viewModel.deleteAllergy(allergy.AllergieID) { success ->
-                    if (success) {
-                        Toast.makeText(requireContext(), "Allergy deleted", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(requireContext(), "Failed to delete allergy", Toast.LENGTH_SHORT).show()
-                    }
+        val dialogView = layoutInflater.inflate(R.layout.warning_allergy, null)
+        val dialog = android.app.Dialog(requireContext())
+        dialog.setContentView(dialogView)
+        dialog.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+        dialog.window?.setDimAmount(0.8f)
+
+        val btnCancel = dialogView.findViewById<android.view.View>(R.id.btnCancelDeleteAllergy)
+        val btnConfirm = dialogView.findViewById<android.view.View>(R.id.btnConfirmDeleteAllergy)
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        btnConfirm.setOnClickListener {
+            viewModel.deleteAllergy(allergy.AllergieID) { success ->
+                if (success) {
+                    Toast.makeText(requireContext(), "Allergy deleted", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "Failed to delete allergy", Toast.LENGTH_SHORT).show()
                 }
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     private fun showMedicalHistoryDetails(history: MedicalHistory) {

@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://tools.android.com/tools"
+    android:id="@+id/swipeRefreshLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+<androidx.core.widget.NestedScrollView
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F8F9FA"
@@ -26,6 +31,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
+            android:paddingBottom="10dp"
             android:text="Manage your account and children profiles"
             android:textColor="#666666"
             android:textSize="14sp" />
@@ -33,9 +39,8 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="24dp"
-            app:cardBackgroundColor="#009688"
-            app:cardCornerRadius="16dp"
+            app:cardBackgroundColor="#009183"
+            app:cardCornerRadius="24dp"
             app:strokeWidth="0dp">
 
             <LinearLayout
@@ -49,14 +54,15 @@
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     android:background="#FFFFFF"
-                    android:padding="16dp"
+                    android:padding="14dp"
                     android:src="@drawable/ic_person"
-                    app:tint="#009688" />
+                    app:tint="#009183"
+                    app:shapeAppearanceOverlay="@style/CircleImageView" />
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
+                    android:layout_marginStart="20dp"
                     android:layout_weight="1"
                     android:orientation="vertical">
 
@@ -66,16 +72,17 @@
                         android:layout_height="wrap_content"
                         android:text="Hidayah binti Karim"
                         android:textColor="#FFFFFF"
-                        android:textSize="20sp"
+                        android:textSize="22sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/tvProfileEmail"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="6dp"
                         android:text="hidayah@example.com"
-                        android:textColor="#E0F2F1"
+                        android:textColor="#FFFFFF"
+                        android:alpha="0.85"
                         android:textSize="14sp" />
 
                     <TextView
@@ -84,7 +91,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:text="+60 11-2345 6789"
-                        android:textColor="#E0F2F1"
+                        android:textColor="#FFFFFF"
+                        android:alpha="0.85"
                         android:textSize="14sp" />
                 </LinearLayout>
             </LinearLayout>
@@ -136,6 +144,81 @@
             android:textColor="#111111"
             android:textSize="18sp"
             android:textStyle="bold" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardNotifications"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="12dp"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="#FFFFFF"
+            app:cardCornerRadius="16dp"
+            app:strokeWidth="0dp"
+            app:rippleColor="#0F000000">
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="16dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/ivNotificationIconContainer"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    app:cardBackgroundColor="#F4F5F7"
+                    app:cardCornerRadius="12dp"
+                    app:strokeWidth="0dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_notifications"
+                        app:tint="#4A5568" />
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:layout_toStartOf="@id/ivNotificationChevronRight"
+                    android:layout_toEndOf="@id/ivNotificationIconContainer"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginEnd="16dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Notifications"
+                        android:textColor="#0F172A"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Manage reminders"
+                        android:textColor="#64748B"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/ivNotificationChevronRight"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="#94A3B8" />
+
+            </RelativeLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardHelpSupport"
@@ -233,9 +316,10 @@
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="24dp"
             android:layout_marginBottom="16dp"
-            android:text="Carelyo v1.0.0 | Made with ♥ for Malaysian families"
+            android:text="Carelyo v1.0.0 | For Malaysian families"
             android:textColor="#999999"
             android:textSize="12sp" />
 
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

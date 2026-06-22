@@ -305,9 +305,4 @@ class VaccinationAgent(private val scope: CoroutineScope) : CarelyoAgent {
             )
         )
     }
-
-    fun refreshData() {
-        cachedVaccinations = emptyList()
-        cachedChildVaccines = emptyList()
-    }
 }

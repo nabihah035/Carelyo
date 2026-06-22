@@ -15,7 +15,8 @@ import java.util.*
 
 class ReminderAdapter(
     private val onDismissClick: (Reminder) -> Unit,
-    private val onItemClick: (Reminder) -> Unit
+    private val onItemClick: (Reminder) -> Unit,
+    private val onMarkAsReadClick: (Reminder) -> Unit
 ) : ListAdapter<Reminder, ReminderAdapter.ReminderViewHolder>(ReminderDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ReminderViewHolder {
@@ -34,8 +35,8 @@ class ReminderAdapter(
         holder.itemView.setOnClickListener {
             onItemClick(reminder)
             // Mark as read when clicked if not already read
-            if (!reminder.is_sent) {
-                onDismissClick(reminder) // This will mark as read
+            if (reminder.noti_status == "Unread") {
+                onMarkAsReadClick(reminder) // This will mark as read
             }
         }
 
@@ -79,14 +80,14 @@ class ReminderAdapter(
             binding.ivReminderIcon.setImageResource(iconRes)
 
             // Show/hide unread dot
-            binding.viewUnreadDot.visibility = if (!reminder.is_sent) {
+            binding.viewUnreadDot.visibility = if (reminder.noti_status == "Unread") {
                 View.VISIBLE
             } else {
                 View.GONE
             }
 
             // Change background color based on read status
-            if (!reminder.is_sent) {
+            if (reminder.noti_status == "Unread") {
                 binding.itemContainer.setBackgroundColor(
                     ContextCompat.getColor(binding.root.context, R.color.unread_background)
                 )

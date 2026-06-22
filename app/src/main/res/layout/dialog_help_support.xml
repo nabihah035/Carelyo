@@ -1,200 +1,201 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<com.google.android.material.card.MaterialCardView
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#FFFFFF"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:layout_margin="16dp"
+    app:cardBackgroundColor="#FFFFFF"
+    app:cardCornerRadius="24dp"
+    app:strokeWidth="0dp">
 
-    <!-- Header Section -->
-    <RelativeLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp">
+        android:orientation="vertical"
+        android:padding="24dp">
 
-        <TextView
-            android:id="@+id/tvDialogTitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentStart="true"
-            android:layout_centerVertical="true"
-            android:text="Help &amp; Support"
-            android:textColor="#0F172A"
-            android:textSize="20sp"
-            android:textStyle="bold" />
-
-        <!-- Close Button Background Shape -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/btnCloseDialog"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_alignParentEnd="true"
-            android:layout_centerVertical="true"
-            android:clickable="true"
-            android:focusable="true"
-            app:cardBackgroundColor="#F1F5F9"
-            app:cardCornerRadius="10dp"
-            app:strokeWidth="0dp"
-            app:rippleColor="#1A000000">
-
-            <ImageView
-                android:layout_width="18dp"
-                android:layout_height="18dp"
-                android:layout_gravity="center"
-                android:src="@drawable/ic_close"
-                app:tint="#64748B" />
-        </com.google.android.material.card.MaterialCardView>
-    </RelativeLayout>
-
-    <!-- Scrollable FAQ Content Wrapper -->
-    <androidx.core.widget.NestedScrollView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:maxHeight="500dp">
-
-        <LinearLayout
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_marginBottom="16dp">
 
-            <!-- FAQ Item 1 -->
+            <TextView
+                android:id="@+id/tvDialogTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true"
+                android:text="Help &amp; Support"
+                android:textColor="#0F172A"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/btnCloseDialog"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardBackgroundColor="#F1F5F9"
+                app:cardCornerRadius="10dp"
+                app:strokeWidth="0dp"
+                app:rippleColor="#1A000000">
+
+                <ImageView
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_close"
+                    app:tint="#64748B" />
+            </com.google.android.material.card.MaterialCardView>
+        </RelativeLayout>
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:maxHeight="500dp">
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:cardBackgroundColor="#F8FAFC"
-                app:cardCornerRadius="16dp"
-                app:strokeWidth="0dp">
+                android:orientation="vertical">
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="#F8FAFC"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="How do I add a child profile?"
-                        android:textColor="#0F172A"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="Go to Profile → My Children → tap &quot;+ Add&quot; to add a new child."
-                        android:textColor="#475569"
-                        android:textSize="13sp"
-                        android:lineSpacingMultiplier="1.2" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="How do I add a child profile?"
+                            android:textColor="#0F172A"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
 
-            <!-- FAQ Item 2 -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:cardBackgroundColor="#F8FAFC"
-                app:cardCornerRadius="16dp"
-                app:strokeWidth="0dp">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Go to Profile → My Children → tap &quot;+ Add&quot; to add a new child."
+                            android:textColor="#475569"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.2" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="#F8FAFC"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="How does AI Summary work?"
-                        android:textColor="#0F172A"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="Record or type doctor notes, then tap &quot;Generate AI Summary&quot; to get a simplified explanation."
-                        android:textColor="#475569"
-                        android:textSize="13sp"
-                        android:lineSpacingMultiplier="1.2" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="How does AI Summary work?"
+                            android:textColor="#0F172A"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
 
-            <!-- FAQ Item 3 -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:cardBackgroundColor="#F8FAFC"
-                app:cardCornerRadius="16dp"
-                app:strokeWidth="0dp">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Record or type doctor notes, then tap &quot;Generate AI Summary&quot; to get a simplified explanation."
+                            android:textColor="#475569"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.2" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="#F8FAFC"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Is my data secure?"
-                        android:textColor="#0F172A"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="All data is encrypted and stored securely. We follow Malaysia PDPA compliance."
-                        android:textColor="#475569"
-                        android:textSize="13sp"
-                        android:lineSpacingMultiplier="1.2" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Is my data secure?"
+                            android:textColor="#0F172A"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
 
-            <!-- FAQ Item 4 -->
-            <com.google.android.material.card.MaterialCardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="4dp"
-                app:cardBackgroundColor="#F8FAFC"
-                app:cardCornerRadius="16dp"
-                app:strokeWidth="0dp">
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="All data is encrypted and stored securely. We follow Malaysia PDPA compliance."
+                            android:textColor="#475569"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.2" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-                <LinearLayout
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp">
+                    android:layout_marginBottom="4dp"
+                    app:cardBackgroundColor="#F8FAFC"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="How do I contact support?"
-                        android:textColor="#0F172A"
-                        android:textSize="15sp"
-                        android:textStyle="bold" />
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:text="Email us at support@carelyo.my or visit our website."
-                        android:textColor="#475569"
-                        android:textSize="13sp"
-                        android:lineSpacingMultiplier="1.2" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="How do I contact support?"
+                            android:textColor="#0F172A"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
 
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
-</LinearLayout>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Email us at support@carelyo.my or visit our website."
+                            android:textColor="#475569"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.2" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

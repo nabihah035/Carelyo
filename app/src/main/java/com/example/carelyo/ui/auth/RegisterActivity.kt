@@ -11,7 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.doAfterTextChanged
 import com.example.carelyo.databinding.ActivityRegisterBinding
 import com.example.carelyo.ui.dashboard.DashboardActivity
-import com.example.carelyo.util.PasswordValidator
+import com.example.carelyo.utils.PasswordValidator
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -104,6 +104,11 @@ class RegisterActivity : AppCompatActivity() {
                 is AuthState.Error -> {
                     binding.progressBar.visibility = View.GONE
                     Toast.makeText(this, "Registration Failure: ${state.message}", Toast.LENGTH_LONG).show()
+                }
+                else -> {
+                    // Handle other states (OtpSent, OtpVerified, PasswordResetSuccess) if necessary
+                    // For RegisterActivity, these might not be relevant yet
+                    binding.progressBar.visibility = View.GONE
                 }
             }
         }

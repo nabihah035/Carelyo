@@ -89,6 +89,10 @@ class LoginActivity : AppCompatActivity() {
                     binding.progressBar.visibility = View.GONE
                     Toast.makeText(this, "Authentication Error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
+                else -> {
+                    // Handle other states (OtpSent, OtpVerified, PasswordResetSuccess) if necessary
+                    binding.progressBar.visibility = View.GONE
+                }
             }
         }
     }

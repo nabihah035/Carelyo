@@ -3,125 +3,334 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:maxHeight="500dp">
+    android:background="@android:color/white"
+    android:orientation="vertical">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="16dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_centerInParent="true"
+            android:text="Add Child"
+            android:textColor="#0B132B"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btnClose"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_alignParentEnd="true"
+            android:layout_centerInParent="true"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Close dialog"
+            android:src="@drawable/ic_close" /> </RelativeLayout>
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:overScrollMode="never"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingHorizontal="24dp"
+            android:paddingBottom="24dp">
 
-            <com.google.android.material.textfield.TextInputLayout
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:hintEnabled="true"
-                app:hintTextColor="#009688"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/bg_input_field"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="4dp">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <EditText
                     android:id="@+id/etChildName"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Full Name *"
-                    android:inputType="textPersonName" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
+                    android:hint="Full name *"
+                    android:inputType="textPersonName"
+                    android:textColor="#0B132B"
+                    android:textColorHint="#99A3B3"
+                    android:textSize="16sp" />
+            </LinearLayout>
 
-            <com.google.android.material.textfield.TextInputLayout
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:hintEnabled="true"
-                app:hintTextColor="#009688"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                android:layout_marginBottom="20dp"
+                android:background="@drawable/bg_input_field"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="4dp">
 
-                <com.google.android.material.textfield.TextInputEditText
+                <EditText
                     android:id="@+id/etDob"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Date of Birth (YYYY-MM-DD)"
-                    android:inputType="date"
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
+                    android:cursorVisible="false"
                     android:focusable="false"
-                    android:cursorVisible="false" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:hintEnabled="true"
-                app:hintTextColor="#009688"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etGender"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Gender (Male/Female)"
-                    android:inputType="textPersonName" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:hintEnabled="true"
-                app:hintTextColor="#009688"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etBloodType"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Blood Type (e.g., A+, O-)"
-                    android:inputType="text" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
-                app:hintEnabled="true"
-                app:hintTextColor="#009688"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etWeight"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Weight (kg)"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:hintEnabled="true"
-                app:hintTextColor="#009688"
-                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etHeight"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="Height (cm)"
-                    android:inputType="numberDecimal" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:hint="dd/mm/yyyy"
+                    android:inputType="date"
+                    android:textColor="#0B132B"
+                    android:textColorHint="#99A3B3"
+                    android:textSize="16sp" />
+            </LinearLayout>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="* Required fields"
-                android:textColor="#666666"
-                android:textSize="12sp" />
+                android:layout_marginBottom="8dp"
+                android:text="Gender"
+                android:textColor="#5A6978"
+                android:textSize="14sp" />
+
+            <RadioGroup
+                android:id="@+id/rgGender"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/rbMale"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_selector_pill"
+                    android:button="@android:color/transparent"
+                    android:gravity="center"
+                    android:text="Male"
+                    android:textColor="#2E3A59"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <RadioButton
+                    android:id="@+id/rbFemale"
+                    android:layout_width="0dp"
+                    android:layout_height="52dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_selector_pill"
+                    android:button="@android:color/transparent"
+                    android:gravity="center"
+                    android:text="Female"
+                    android:textColor="#2E3A59"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </RadioGroup>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="Blood Type"
+                android:textColor="#5A6978"
+                android:textSize="14sp" />
+
+            <com.google.android.flexbox.FlexboxLayout
+                android:layout_width="match_parent"
+                android:layout_height="101dp"
+                android:layout_marginBottom="20dp"
+                app:flexWrap="wrap"
+                app:justifyContent="flex_start">
+
+                <TextView
+                    android:layout_width="54dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="A+"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="54dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="A-"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="54dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="B+"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="54dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="B-"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="54dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="O+"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="54dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="O-"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="64dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="AB+"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="64dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="AB-"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <AutoCompleteTextView
+                    android:id="@+id/etBloodType"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
+
+                <AutoCompleteTextView
+                    android:id="@+id/etGender"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone" />
+            </com.google.android.flexbox.FlexboxLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:text="Weight (kg)"
+                        android:textColor="#5A6978"
+                        android:textSize="14sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_input_field"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="4dp">
+
+                        <EditText
+                            android:id="@+id/etWeight"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@android:color/transparent"
+                            android:hint="e.g. 12.5"
+                            android:inputType="numberDecimal"
+                            android:textColor="#0B132B"
+                            android:textColorHint="#99A3B3"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:text="Height (cm)"
+                        android:textColor="#5A6978"
+                        android:textSize="14sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_input_field"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="4dp">
+
+                        <EditText
+                            android:id="@+id/etHeight"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:background="@android:color/transparent"
+                            android:hint="e.g. 85"
+                            android:inputType="numberDecimal"
+                            android:textColor="#0B132B"
+                            android:textColorHint="#99A3B3"
+                            android:textSize="16sp" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSaveChild"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:backgroundTint="#7BC6BF"
+                android:text="Add Child"
+                android:textAllCaps="false"
+                android:textColor="@android:color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:cornerRadius="16dp"
+                app:icon="@drawable/ic_check"
+                app:iconGravity="textStart"
+                app:iconTint="@android:color/white" />
 
         </LinearLayout>
     </ScrollView>
-
 </LinearLayout>

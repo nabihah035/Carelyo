@@ -26,14 +26,18 @@ class ForgotPasswordActivity : AppCompatActivity() {
         binding.btnResetPassword.setOnClickListener {
             val email = binding.etEmail.text.toString().trim()
             if (email.isNotEmpty()) {
-                viewModel.resetPassword(email)
+                viewModel.sendPasswordResetOtp(email)
             } else {
                 Toast.makeText(this, "Please provide your email address", Toast.LENGTH_SHORT).show()
             }
         }
 
-        // Return seamlessly back to LoginActivity
         binding.tvBackToLogin.setOnClickListener {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+        }
+
+        binding.btnBack.setOnClickListener {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
         }
@@ -47,14 +51,24 @@ class ForgotPasswordActivity : AppCompatActivity() {
                     binding.btnResetPassword.text = ""
                     binding.btnResetPassword.isEnabled = false
                 }
-                is AuthState.Success -> {
+                is AuthState.OtpSent -> {
                     binding.progressBar.visibility = View.GONE
                     binding.btnResetPassword.text = "Send Reset Instructions"
                     binding.btnResetPassword.isEnabled = true
 
-                    Toast.makeText(this, "Reset instructions sent successfully! Please check your inbox.", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this, "OTP sent successfully! Please check your email.", Toast.LENGTH_LONG).show()
 
-                    // Route back to Login screen now that reset is done
+                    // Navigate to OTP verification
+                    val intent = Intent(this, VerifyOtpActivity::class.java)
+                    intent.putExtra("email", state.email)
+                    startActivity(intent)
+                    finish()
+                }
+                is AuthState.Success -> {
+                    binding.progressBar.visibility = View.GONE
+                    binding.btnResetPassword.text = "Send Reset Instructions"
+                    binding.btnResetPassword.isEnabled = true
+                    Toast.makeText(this, "Reset instructions sent successfully!", Toast.LENGTH_LONG).show()
                     startActivity(Intent(this, LoginActivity::class.java))
                     finish()
                 }
@@ -64,6 +78,7 @@ class ForgotPasswordActivity : AppCompatActivity() {
                     binding.btnResetPassword.isEnabled = true
                     Toast.makeText(this, "Error: ${state.message}", Toast.LENGTH_LONG).show()
                 }
+                else -> {}
             }
         }
     }

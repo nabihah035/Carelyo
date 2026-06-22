@@ -55,6 +55,13 @@ android {
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
     }
+
+    packaging {
+        resources {
+            excludes += "META-INF/NOTICE.md"
+            excludes += "META-INF/LICENSE.md"
+        }
+    }
 }
 
 dependencies {
@@ -113,4 +120,11 @@ dependencies {
     // Retrofit
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+
+    //MAIL
+    implementation("com.sun.mail:android-mail:1.6.7")
+    implementation("com.sun.mail:android-activation:1.6.7")
+
+    //FLEXBOX
+    implementation("com.google.android.flexbox:flexbox:3.0.0")
 }

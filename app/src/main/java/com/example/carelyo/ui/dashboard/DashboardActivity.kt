@@ -13,16 +13,26 @@ import com.example.carelyo.R
 import com.example.carelyo.databinding.ActivityDashboardBinding
 import com.example.carelyo.ui.aihelp.HelpActivity
 import com.example.carelyo.ui.reminder.ReminderActivity
+import android.content.SharedPreferences
 
 class DashboardActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityDashboardBinding
     private val viewModel: DashboardViewModel by viewModels()
+    private lateinit var prefs: SharedPreferences
+    private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key == "notifications_enabled") {
+            updateBadgeVisibility()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityDashboardBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        prefs = getSharedPreferences("carelyo_prefs", android.content.Context.MODE_PRIVATE)
+        prefs.registerOnSharedPreferenceChangeListener(prefListener)
 
         // Setup Jetpack Navigation Routing Architecture
         val navHostFragment = supportFragmentManager
@@ -67,17 +77,28 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateBadgeVisibility() {
+        val isEnabled = prefs.getBoolean("notifications_enabled", true)
+        val count = viewModel.unreadRemindersCount.value ?: 0
+        if (count > 0 && isEnabled) {
+            binding.tvNotificationBadge.visibility = View.VISIBLE
+            binding.tvNotificationBadge.text = count.toString()
+        } else {
+            binding.tvNotificationBadge.visibility = View.GONE
+        }
+    }
+
     /**
      * Observes live changes from the Supabase queries
      */
     private fun observeViewModel() {
         viewModel.unreadRemindersCount.observe(this) { count ->
-            if (count > 0) {
-                binding.tvNotificationBadge.visibility = View.VISIBLE
-                binding.tvNotificationBadge.text = count.toString()
-            } else {
-                binding.tvNotificationBadge.visibility = View.GONE
-            }
+            updateBadgeVisibility()
         }
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
     }
 }

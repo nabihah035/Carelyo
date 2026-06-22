@@ -55,6 +55,11 @@ class HomeFragment : Fragment() {
 
         observeViewModel()
         loadDashboardData()
+
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            viewModel.invalidateCache()
+            loadDashboardData()
+        }
     }
 
     private fun setupAdapters() {
@@ -107,6 +112,7 @@ class HomeFragment : Fragment() {
                 binding.progressBar.visibility = View.VISIBLE
                 hideContent()
             } else {
+                binding.swipeRefreshLayout.isRefreshing = false
                 if (viewModel.childrenList.value != null) {
                     binding.progressBar.visibility = View.GONE
                 }

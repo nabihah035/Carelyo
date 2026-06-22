@@ -59,7 +59,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val success = reminderService.markReminderAsSent(reminder.RemindID)
             if (success) {
-                val updatedReminder = reminder.copy(is_sent = true)
+                val updatedReminder = reminder.copy(noti_status = "Read", is_sent = true)
                 allReminders = allReminders.map {
                     if (it.RemindID == reminder.RemindID) updatedReminder else it
                 }
@@ -77,7 +77,7 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             val success = reminderService.markAllAsRead(currentParentId)
             if (success) {
-                allReminders = allReminders.map { it.copy(is_sent = true) }
+                allReminders = allReminders.map { it.copy(noti_status = "Read", is_sent = true) }
                 _reminders.value = allReminders
                 updateUnreadCount(allReminders)
                 _operationResult.value = ReminderOperationResult.Success("All marked as read")
@@ -102,6 +102,6 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     }
 
     private fun updateUnreadCount(reminders: List<Reminder>) {
-        _unreadCount.value = reminders.count { !it.is_sent }
+        _unreadCount.value = reminders.count { it.noti_status == "Unread" }
     }
 }

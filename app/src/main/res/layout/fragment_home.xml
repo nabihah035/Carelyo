@@ -1,17 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/swipeRefreshLayout"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true"
-    android:background="#F5F5F5">
+    android:layout_height="match_parent">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:background="#F5F5F5">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
 
         <!-- Progress Bar -->
         <ProgressBar
@@ -45,7 +50,7 @@
             app:boxCornerRadiusTopEnd="12dp"
             app:boxCornerRadiusBottomStart="12dp"
             app:boxCornerRadiusBottomEnd="12dp"
-            app:boxStrokeColor="#7C7C7C"
+            app:boxStrokeColor="#BFBFBF"
             app:hintEnabled="false">
 
             <AutoCompleteTextView
@@ -56,7 +61,7 @@
                 android:padding="16dp"
                 android:textSize="16sp"
                 android:textStyle="bold"
-                android:textColor="#333333"
+                android:textColor="#000000"
                 android:popupBackground="@drawable/dropdown_popup_background" />
 
         </com.google.android.material.textfield.TextInputLayout>
@@ -296,15 +301,6 @@
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
-                <TextView
-                    android:id="@+id/tvAllergyDescription"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="⚠️ Peanuts, Dairy, Eggs"
-                    android:textColor="#D32F2F"
-                    android:textSize="14sp" />
-
                 <!-- Allergy Chips -->
                 <com.google.android.material.chip.ChipGroup
                     android:id="@+id/chipGroupAllergies"
@@ -386,4 +382,5 @@
             android:layout_height="16dp" />
 
     </LinearLayout>
-</ScrollView>
+    </ScrollView>
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

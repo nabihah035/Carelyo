@@ -5,12 +5,10 @@ import com.example.carelyo.agent.infra.CarelyoMessage
 import com.example.carelyo.agent.infra.CarelyoMessageBroker
 import com.example.carelyo.api.supabase.SupabaseClient
 import com.example.carelyo.data.entity.User
-import com.google.firebase.messaging.FirebaseMessaging
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 
 class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
     override val agentName: String = "AuthenticationAgent"
@@ -25,7 +23,7 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
             try {
                 val newUser = User(
                     email = email,
-                    password = password, // Secure payload injection
+                    password = password,
                     full_name = fullName,
                     phone_number = phoneNumber,
                     role = role
@@ -60,7 +58,6 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 if (userList.isNotEmpty()) {
                     val user = userList.first()
 
-                    // Verify if database password match criteria evaluates correctly
                     if (user.password == passwordEntered) {
                         println("[$agentName]: Secure login matching verified for ${user.full_name}")
 
@@ -83,23 +80,19 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
         }
     }
 
-    fun sendPasswordResetEmail(email: String) {
-        scope.launch(Dispatchers.IO) {
-            try {
-                com.google.firebase.auth.FirebaseAuth.getInstance()
-                    .sendPasswordResetEmail(email)
-                    .await()
-
-                val successMsg = CarelyoMessage(
-                    sender = agentName,
-                    receiver = "BROADCAST",
-                    messageType = "PASSWORD_RESET_SENT",
-                    content = mapOf("email" to email)
-                )
-                CarelyoMessageBroker.passMessage(successMsg)
-            } catch (e: Exception) {
-                sendFailureNotification("PASSWORD_RESET_FAILURE", e.localizedMessage ?: "Unknown error")
-            }
+    // NEW: Update user password
+    suspend fun updateUserPassword(email: String, newPassword: String): Boolean {
+        return try {
+            val result = SupabaseClient.client.postgrest["USER"]
+                .update(
+                    mapOf("password" to newPassword)
+                ) {
+                    filter { eq("email", email) }
+                }
+            true
+        } catch (e: Exception) {
+            println("[$agentName]: Password update failed: ${e.localizedMessage}")
+            false
         }
     }
 

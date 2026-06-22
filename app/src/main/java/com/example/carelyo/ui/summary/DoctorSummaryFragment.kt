@@ -71,6 +71,10 @@ class DoctorSummaryFragment : Fragment() {
         setupRecyclerView()
         setupClickListeners()
         observeViewModel()
+
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            viewModel.loadDoctorVisits()
+        }
     }
 
     private fun setupRecyclerView() {
@@ -234,7 +238,7 @@ class DoctorSummaryFragment : Fragment() {
                 transcribedText
             }
 
-            viewModel.generateSummaryFromNotes(selectedChildId, doctorName, "", finalNotes)
+            viewModel.generateSummaryFromNotes(selectedChildId, doctorName, clinicName, finalNotes)
             dialog.dismiss()
         }
 
@@ -300,7 +304,7 @@ class DoctorSummaryFragment : Fragment() {
                 rawNotes
             }
 
-            viewModel.generateSummaryFromNotes(selectedChildId, doctorName, "", finalNotes)
+            viewModel.generateSummaryFromNotes(selectedChildId, doctorName, clinicName, finalNotes)
             dialog.dismiss()
         }
 
@@ -327,6 +331,14 @@ class DoctorSummaryFragment : Fragment() {
                 when (state) {
                     is UiState.Loading -> binding.progressBar.visibility = View.VISIBLE
                     else -> binding.progressBar.visibility = View.GONE
+                }
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.isLoading.collectLatest { isLoading ->
+                if (!isLoading) {
+                    binding.swipeRefreshLayout.isRefreshing = false
                 }
             }
         }

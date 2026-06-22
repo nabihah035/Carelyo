@@ -1,6 +1,6 @@
 package com.example.carelyo.ui.profile
 
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.app.DatePickerDialog
 import android.content.Intent
 import android.os.Bundle
@@ -23,6 +23,11 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import io.github.jan.supabase.postgrest.postgrest
+import com.example.carelyo.api.supabase.SupabaseClient
 
 class ProfileFragment : Fragment() {
 
@@ -30,8 +35,8 @@ class ProfileFragment : Fragment() {
     private val binding get() = _binding!!
     private lateinit var sessionManager: SessionManager
     private lateinit var childrenAdapter: ChildrenAdapter
-    private var helpSupportDialog: android.app.AlertDialog? = null
-    private var addChildDialog: android.app.AlertDialog? = null
+    private var helpSupportDialog: androidx.appcompat.app.AlertDialog? = null
+    private var addChildDialog: androidx.appcompat.app.AlertDialog? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -62,27 +67,11 @@ class ProfileFragment : Fragment() {
 
             override fun processIncomingMessage(message: CarelyoMessage) {
                 when (message.messageType) {
-                    "INFORM_CHILD_PROFILES_READY" -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val children = message.content["children"] as? List<Child>
-                        if (children != null) {
-                            requireActivity().runOnUiThread {
-                                childrenAdapter.submitList(children)
-                                updateEmptyState(children.isEmpty())
-                            }
-                        }
-                    }
                     "INFORM_CHILD_ADD_SUCCESS" -> {
                         requireActivity().runOnUiThread {
                             Toast.makeText(requireContext(), "Child added successfully!", Toast.LENGTH_SHORT).show()
                             // Refresh children list
                             requestChildrenData()
-                        }
-                    }
-                    "CHILD_FETCH_ERROR" -> {
-                        val reason = message.content["reason"] as? String ?: "Unknown error"
-                        requireActivity().runOnUiThread {
-                            Toast.makeText(requireContext(), "Error loading children: $reason", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
@@ -91,6 +80,10 @@ class ProfileFragment : Fragment() {
 
         // Request children data
         requestChildrenData()
+        
+        binding.swipeRefreshLayout.setOnRefreshListener {
+            requestChildrenData()
+        }
     }
 
     private fun setupUserData() {
@@ -102,11 +95,16 @@ class ProfileFragment : Fragment() {
     }
 
     private fun setupChildrenRecyclerView() {
-        childrenAdapter = ChildrenAdapter { child ->
-            // Navigate to child details screen
-            Toast.makeText(requireContext(), "Selected: ${child.full_name}", Toast.LENGTH_SHORT).show()
-            // TODO: Navigate to child details screen
-        }
+        childrenAdapter = ChildrenAdapter(
+            onChildClick = { child ->
+                // Navigate to child details screen
+                Toast.makeText(requireContext(), "Selected: ${child.full_name}", Toast.LENGTH_SHORT).show()
+                // TODO: Navigate to child details screen
+            },
+            onDeleteClick = { child ->
+                showDeleteChildDialog(child)
+            }
+        )
 
         binding.rvChildren.layoutManager = LinearLayoutManager(requireContext())
         binding.rvChildren.adapter = childrenAdapter
@@ -118,15 +116,29 @@ class ProfileFragment : Fragment() {
     private fun requestChildrenData() {
         val user = sessionManager.getUserSession()
         if (user != null && user.UserID > 0) {
-            // Send message to ChildRecordAgent to fetch children
-            CarelyoMessageBroker.passMessage(
-                CarelyoMessage(
-                    sender = "ProfileFragment",
-                    receiver = "ChildRecordAgent",
-                    messageType = "REQUEST_CHILD_DATA",
-                    content = mapOf("parentId" to user.UserID)
-                )
-            )
+            binding.swipeRefreshLayout.isRefreshing = true
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val result = SupabaseClient.client.postgrest["CHILD"].select {
+                        filter { eq("parent_id", user.UserID) }
+                    }
+                    val children = result.decodeList<Child>().filter { it.status != "unactive" }
+                    
+                    requireActivity().runOnUiThread {
+                        childrenAdapter.submitList(children)
+                        updateEmptyState(children.isEmpty())
+                        binding.swipeRefreshLayout.isRefreshing = false
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    requireActivity().runOnUiThread {
+                        Toast.makeText(requireContext(), "Error loading children: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                        binding.swipeRefreshLayout.isRefreshing = false
+                    }
+                }
+            }
+        } else {
+            binding.swipeRefreshLayout.isRefreshing = false
         }
     }
 
@@ -153,9 +165,60 @@ class ProfileFragment : Fragment() {
             showHelpSupportDialog()
         }
 
+        // Notifications card
+        binding.cardNotifications.setOnClickListener {
+            showNotificationDialog()
+        }
+
         // Logout button
         binding.btnLogOut.setOnClickListener {
             performLogout()
+        }
+    }
+
+    private var notificationDialog: androidx.appcompat.app.AlertDialog? = null
+
+    private fun showNotificationDialog() {
+        notificationDialog?.dismiss()
+
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_notification, null)
+        val switchNotifications = dialogView.findViewById<com.google.android.material.switchmaterial.SwitchMaterial>(R.id.switchAllowNotification)
+        val btnCancel = dialogView.findViewById<View>(R.id.btnCancel)
+
+        val prefs = requireContext().getSharedPreferences("carelyo_prefs", android.content.Context.MODE_PRIVATE)
+        val isNotificationsEnabled = prefs.getBoolean("notifications_enabled", true)
+        switchNotifications?.isChecked = isNotificationsEnabled
+
+        notificationDialog = MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogView)
+            .setCancelable(true)
+            .show() as AlertDialog?
+
+        notificationDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
+
+        btnCancel?.setOnClickListener {
+            notificationDialog?.dismiss()
+        }
+
+        switchNotifications?.setOnCheckedChangeListener { _, isChecked ->
+            prefs.edit().putBoolean("notifications_enabled", isChecked).apply()
+            
+            val user = sessionManager.getUserSession()
+            if (user != null) {
+                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        SupabaseClient.client.postgrest["USER"].update(
+                            {
+                                set("notification_permission", isChecked)
+                            }
+                        ) {
+                            filter { eq("userid", user.UserID) }
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
         }
     }
 
@@ -175,6 +238,21 @@ class ProfileFragment : Fragment() {
         // Set up date picker for DOB
         dialogBinding.etDob.setOnClickListener {
             showDatePickerDialog(dialogBinding)
+        }
+
+        // Set up gender dropdown
+        val genders = arrayOf("Male", "Female")
+        val adapterGender = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, genders)
+        (dialogBinding.etGender as? android.widget.AutoCompleteTextView)?.setAdapter(adapterGender)
+
+        // Set up blood type dropdown
+        val bloodTypes = arrayOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
+        val adapterBlood = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, bloodTypes)
+        (dialogBinding.etBloodType as? android.widget.AutoCompleteTextView)?.setAdapter(adapterBlood)
+
+        // Set up close button
+        dialogBinding.btnClose.setOnClickListener {
+            addChildDialog?.dismiss()
         }
 
         addChildDialog = MaterialAlertDialogBuilder(requireContext())
@@ -202,9 +280,8 @@ class ProfileFragment : Fragment() {
                     date_of_birth = if (!dob.isNullOrEmpty()) dob else null,
                     gender = if (!gender.isNullOrEmpty()) gender else null,
                     blood_type = if (!bloodType.isNullOrEmpty()) bloodType else null,
-                    weight = if (!weight.isNullOrEmpty()) weight.toDoubleOrNull() else null,
-                    height = if (!height.isNullOrEmpty()) height.toDoubleOrNull() else null,
-                    profile_photo_url = null,
+                    weight = if (!weight.isNullOrEmpty()) weight else null,
+                    height = if (!height.isNullOrEmpty()) height else null,
                     created_at = null,
                     updated_at = null
                 )
@@ -267,21 +344,73 @@ class ProfileFragment : Fragment() {
     }
 
     private fun performLogout() {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Log Out")
-            .setMessage("Are you sure you want to log out?")
-            .setPositiveButton("Log Out") { _, _ ->
-                // Clear session
-                sessionManager.clearSession()
+        val dialogView = layoutInflater.inflate(R.layout.warning_logout, null)
+        val dialog = android.app.Dialog(requireContext())
+        dialog.setContentView(dialogView)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setDimAmount(0.8f)
 
-                // Navigate to Login
-                val intent = Intent(requireContext(), LoginActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                }
-                startActivity(intent)
+        val btnCancel = dialogView.findViewById<View>(R.id.btnCancelLogout)
+        val btnConfirm = dialogView.findViewById<View>(R.id.btnConfirmLogout)
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            // Clear session
+            sessionManager.clearSession()
+            // Navigate to Login
+            val intent = Intent(requireContext(), LoginActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+            startActivity(intent)
+        }
+
+        dialog.show()
+    }
+
+    private fun showDeleteChildDialog(child: Child) {
+        val dialogView = layoutInflater.inflate(R.layout.warning_child, null)
+        val dialog = android.app.Dialog(requireContext())
+        dialog.setContentView(dialogView)
+        dialog.window?.setBackgroundDrawableResource(android.R.color.transparent)
+        dialog.window?.setDimAmount(0.8f)
+
+        val btnCancel = dialogView.findViewById<View>(R.id.btnCancelDeleteChild)
+        val btnConfirm = dialogView.findViewById<View>(R.id.btnConfirmDeleteChild)
+
+        btnCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        btnConfirm.setOnClickListener {
+            dialog.dismiss()
+            Toast.makeText(requireContext(), "Removing child...", Toast.LENGTH_SHORT).show()
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    SupabaseClient.client.postgrest["CHILD"].update(
+                        {
+                            set("status", "unactive")
+                        }
+                    ) {
+                        filter { eq("childid", child.ChildID) }
+                    }
+                    requireActivity().runOnUiThread {
+                        Toast.makeText(requireContext(), "Child removed successfully!", Toast.LENGTH_SHORT).show()
+                        requestChildrenData()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    requireActivity().runOnUiThread {
+                        Toast.makeText(requireContext(), "Failed to remove child: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+
+        dialog.show()
     }
 
     override fun onDestroyView() {

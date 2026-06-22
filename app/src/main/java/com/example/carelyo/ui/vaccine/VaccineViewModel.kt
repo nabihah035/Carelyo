@@ -165,7 +165,6 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                 val existingReminders = SupabaseClient.client.postgrest["REMINDER"]
                     .select {
                         filter { eq("childid", childVaccine.ChildID ?: 0) }
-                        filter { eq("reference_id", vaccine.VaccineID) }
                         filter { eq("reminder_type", "vaccine") }
                     }
                     .decodeList<Reminder>()
@@ -183,9 +182,8 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                         ChildID = childVaccine.ChildID ?: 0,
                         ParentID = parentId,
                         reminder_type = "vaccine",
-                        reference_id = vaccine.VaccineID,
                         scheduled_at = scheduledAt,
-                        is_sent = false
+                        is_sent = (childVaccine.status == "Done" || childVaccine.status == "Completed")
                     )
 
                     SupabaseClient.client.postgrest["REMINDER"]
@@ -270,7 +268,6 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                 val reminders = SupabaseClient.client.postgrest["REMINDER"]
                     .select {
                         filter { eq("childid", childId) }
-                        filter { eq("reference_id", vaccineId) }
                         filter { eq("reminder_type", "vaccine") }
                     }
                     .decodeList<Reminder>()

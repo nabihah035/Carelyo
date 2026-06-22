@@ -1,8 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<androidx.swiperefreshlayout.widget.SwipeRefreshLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/swipeRefreshLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+<androidx.constraintlayout.widget.ConstraintLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F9FAFC"
@@ -174,7 +179,7 @@
             android:layout_height="56dp"
             android:layout_weight="1"
             android:backgroundTint="#00A389"
-            android:text="+ Add New Record"
+            android:text="+ Add New Medical Record"
             android:textAllCaps="false"
             android:textColor="#FFFFFF"
             android:textSize="16sp"
@@ -184,3 +189,4 @@
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

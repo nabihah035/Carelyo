@@ -55,6 +55,17 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     broadcastError("Invalid child data")
                 }
             }
+
+            "REQUEST_DELETE_CHILD" -> {
+                val childId = message.content["childId"] as? Int
+                val parentId = message.content["parentId"] as? Int
+                if (childId != null && parentId != null) {
+                    println("[$agentName]: Received request to delete child ID: $childId")
+                    deleteChildRecord(childId, parentId)
+                } else {
+                    broadcastError("Invalid child ID for deletion")
+                }
+            }
         }
     }
 
@@ -70,8 +81,7 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     "gender" to child.gender,
                     "blood_type" to child.blood_type,
                     "weight" to child.weight?.toString(),
-                    "height" to child.height?.toString(),
-                    "profile_photo_url" to child.profile_photo_url
+                    "height" to child.height?.toString()
                 )
 
                 // Insert using the map to ensure proper column mapping
@@ -97,13 +107,45 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
         }
     }
 
+    private fun deleteChildRecord(childId: Int, parentId: Int) {
+        scope.launch(Dispatchers.IO) {
+            try {
+                // Change status to unactive instead of deleting
+                SupabaseClient.client.postgrest["CHILD"].update(
+                    {
+                        set("status", "unactive")
+                    }
+                ) {
+                    filter { eq("childid", childId) }
+                }
+
+                println("[$agentName]: Successfully updated child status to unactive.")
+                
+                // Refresh parent collection stack
+                fetchChildProfilesForParent(parentId)
+
+                CarelyoMessageBroker.passMessage(
+                    CarelyoMessage(
+                        sender = agentName,
+                        receiver = "BROADCAST",
+                        messageType = "INFORM_CHILD_DELETE_SUCCESS",
+                        content = emptyMap()
+                    )
+                )
+            } catch (e: Exception) {
+                println("[$agentName]: Failed to delete child: ${e.localizedMessage}")
+                broadcastError("Failed to delete child: ${e.localizedMessage}")
+            }
+        }
+    }
+
     private fun fetchChildProfilesForParent(parentId: Int) {
         scope.launch(Dispatchers.IO) {
             try {
                 val result = SupabaseClient.client.postgrest["CHILD"].select {
                     filter { eq("parent_id", parentId) }
                 }
-                val childrenList = result.decodeList<Child>()
+                val childrenList = result.decodeList<Child>().filter { it.status != "unactive" }
 
                 println("[$agentName]: Located ${childrenList.size} registered child profiles for parent ID: $parentId")
 
