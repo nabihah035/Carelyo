@@ -9,7 +9,6 @@ import com.example.carelyo.R
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.databinding.ItemChildBinding
 import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
 
 class ChildrenAdapter(
@@ -39,11 +38,9 @@ class ChildrenAdapter(
         fun bind(child: Child) {
             binding.tvChildName.text = child.full_name ?: "Unknown"
 
-            // Format date of birth
             val formattedDob = formatDateOfBirth(child.date_of_birth)
             binding.tvChildDob.text = "Born: $formattedDob"
 
-            // Set child details (gender and blood type)
             val details = buildString {
                 if (!child.gender.isNullOrEmpty()) {
                     append(child.gender)
@@ -52,12 +49,10 @@ class ChildrenAdapter(
                     if (isNotEmpty()) append(" • ")
                     append(child.blood_type)
                 }
-                // Add weight if available
                 if (child.weight != null) {
                     if (isNotEmpty()) append(" • ")
                     append("${child.weight}kg")
                 }
-                // Add height if available
                 if (child.height != null) {
                     if (isNotEmpty()) append(" • ")
                     append("${child.height}cm")
@@ -68,7 +63,6 @@ class ChildrenAdapter(
             }
             binding.tvChildDetails.text = details
 
-            // Set appropriate avatar based on gender
             val avatarRes = when (child.gender?.lowercase()) {
                 "female" -> R.drawable.ic_avatar_female
                 "male" -> R.drawable.ic_avatar_male1
@@ -87,7 +81,6 @@ class ChildrenAdapter(
         private fun formatDateOfBirth(dateOfBirth: String?): String {
             if (dateOfBirth.isNullOrEmpty()) return "Unknown"
             return try {
-                // Handle both yyyy-MM-dd format (from database)
                 val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                 val outputFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
                 val date = inputFormat.parse(dateOfBirth)
@@ -97,7 +90,6 @@ class ChildrenAdapter(
                     dateOfBirth
                 }
             } catch (e: Exception) {
-                // If parsing fails, return original
                 dateOfBirth
             }
         }

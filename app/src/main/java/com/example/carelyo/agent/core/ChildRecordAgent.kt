@@ -72,21 +72,23 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
     private fun insertChildRecord(child: Child) {
         scope.launch(Dispatchers.IO) {
             try {
-                // Create a copy with only the fields we want to insert
-                // The database will auto-generate childid
-                val childToInsert = mapOf(
-                    "parent_id" to child.Parent_ID,
-                    "full_name" to child.full_name,
-                    "date_of_birth" to child.date_of_birth,
-                    "gender" to child.gender,
-                    "blood_type" to child.blood_type,
-                    "weight" to child.weight?.toString(),
-                    "height" to child.height?.toString()
+                val childToInsert = com.example.carelyo.data.entity.ChildInsert(
+                    Parent_ID = child.Parent_ID,
+                    full_name = child.full_name ?: "",
+                    status = "Active",
+                    date_of_birth = child.date_of_birth?.takeIf { it.isNotEmpty() },
+                    gender = child.gender?.takeIf { it.isNotEmpty() },
+                    blood_type = child.blood_type?.takeIf { it.isNotEmpty() },
+                    weight = child.weight?.takeIf { it.isNotEmpty() },
+                    height = child.height?.takeIf { it.isNotEmpty() }
                 )
 
-                // Insert using the map to ensure proper column mapping
-                SupabaseClient.client.postgrest["CHILD"].insert(childToInsert)
-                println("[$agentName]: Successfully inserted new child record into database.")
+                println("[$agentName]: Inserting child with data: $childToInsert")
+                println("[$agentName]: Parent ID: ${child.Parent_ID}")
+
+                // Insert using the data class
+                val result = SupabaseClient.client.postgrest["CHILD"].insert(childToInsert)
+                println("[$agentName]: Insert successful. Result: $result")
 
                 // Refresh the parent collection stack so UI updates instantly
                 fetchChildProfilesForParent(child.Parent_ID)
@@ -97,12 +99,31 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                         sender = agentName,
                         receiver = "BROADCAST",
                         messageType = "INFORM_CHILD_ADD_SUCCESS",
-                        content = emptyMap()
+                        content = mapOf("childName" to (child.full_name ?: "Unknown"))
                     )
                 )
             } catch (e: Exception) {
                 println("[$agentName]: Failed to insert child record: ${e.localizedMessage}")
-                broadcastError("Failed to save child data: ${e.localizedMessage}")
+                e.printStackTrace()
+
+                val errorMessage = when {
+                    e.localizedMessage?.contains("status") == true ->
+                        "Status must be 'Active' or 'Inactive'"
+                    e.localizedMessage?.contains("foreign key") == true ->
+                        "Parent ID does not exist. Please login again."
+                    else -> e.localizedMessage ?: "Unknown database error"
+                }
+
+                broadcastError(errorMessage)
+
+                CarelyoMessageBroker.passMessage(
+                    CarelyoMessage(
+                        sender = agentName,
+                        receiver = "BROADCAST",
+                        messageType = "INFORM_CHILD_ADD_FAILED",
+                        content = mapOf("error" to errorMessage)
+                    )
+                )
             }
         }
     }
@@ -110,17 +131,17 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
     private fun deleteChildRecord(childId: Int, parentId: Int) {
         scope.launch(Dispatchers.IO) {
             try {
-                // Change status to unactive instead of deleting
+                // Change status to Inactive (ENUM value must be exactly 'Inactive')
                 SupabaseClient.client.postgrest["CHILD"].update(
                     {
-                        set("status", "unactive")
+                        set("status", "Inactive")
                     }
                 ) {
                     filter { eq("childid", childId) }
                 }
 
-                println("[$agentName]: Successfully updated child status to unactive.")
-                
+                println("[$agentName]: Successfully updated child status to Inactive.")
+
                 // Refresh parent collection stack
                 fetchChildProfilesForParent(parentId)
 
@@ -134,6 +155,7 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 )
             } catch (e: Exception) {
                 println("[$agentName]: Failed to delete child: ${e.localizedMessage}")
+                e.printStackTrace()
                 broadcastError("Failed to delete child: ${e.localizedMessage}")
             }
         }
@@ -145,7 +167,8 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 val result = SupabaseClient.client.postgrest["CHILD"].select {
                     filter { eq("parent_id", parentId) }
                 }
-                val childrenList = result.decodeList<Child>().filter { it.status != "unactive" }
+                // Filter out Inactive children (ENUM value must be exactly 'Inactive')
+                val childrenList = result.decodeList<Child>().filter { it.status != "Inactive" }
 
                 println("[$agentName]: Located ${childrenList.size} registered child profiles for parent ID: $parentId")
 
@@ -158,6 +181,7 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 CarelyoMessageBroker.passMessage(childrenLoadedMsg)
             } catch (e: Exception) {
                 println("[$agentName]: Error querying CHILD table: ${e.localizedMessage}")
+                e.printStackTrace()
                 broadcastError(e.localizedMessage ?: "Unknown database error encountered.")
             }
         }

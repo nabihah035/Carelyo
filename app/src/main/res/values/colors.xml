@@ -36,4 +36,6 @@
     <color name="button_text_unselected">#334155</color>
 
     <color name="unread_background">#F4FBF9</color>
+    <color name="blood_text_default">#2E3A59</color>
+
 </resources>

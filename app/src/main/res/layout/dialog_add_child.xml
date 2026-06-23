@@ -30,7 +30,8 @@
             android:layout_centerInParent="true"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="Close dialog"
-            android:src="@drawable/ic_close" /> </RelativeLayout>
+            android:src="@drawable/ic_close" />
+    </RelativeLayout>
 
     <ScrollView
         android:layout_width="match_parent"
@@ -141,12 +142,13 @@
 
             <com.google.android.flexbox.FlexboxLayout
                 android:layout_width="match_parent"
-                android:layout_height="101dp"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="20dp"
                 app:flexWrap="wrap"
                 app:justifyContent="flex_start">
 
                 <TextView
+                    android:id="@+id/tvBloodAplus"
                     android:layout_width="54dp"
                     android:layout_height="40dp"
                     android:layout_margin="4dp"
@@ -157,6 +159,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvBloodAminus"
                     android:layout_width="54dp"
                     android:layout_height="40dp"
                     android:layout_margin="4dp"
@@ -167,6 +170,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvBloodBplus"
                     android:layout_width="54dp"
                     android:layout_height="40dp"
                     android:layout_margin="4dp"
@@ -177,6 +181,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvBloodBminus"
                     android:layout_width="54dp"
                     android:layout_height="40dp"
                     android:layout_margin="4dp"
@@ -187,6 +192,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvBloodOplus"
                     android:layout_width="54dp"
                     android:layout_height="40dp"
                     android:layout_margin="4dp"
@@ -197,6 +203,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvBloodOminus"
                     android:layout_width="54dp"
                     android:layout_height="40dp"
                     android:layout_margin="4dp"
@@ -207,6 +214,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvBloodABplus"
                     android:layout_width="64dp"
                     android:layout_height="40dp"
                     android:layout_margin="4dp"
@@ -217,12 +225,24 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvBloodABminus"
                     android:layout_width="64dp"
                     android:layout_height="40dp"
                     android:layout_margin="4dp"
                     android:background="@drawable/bg_blood_pill"
                     android:gravity="center"
                     android:text="AB-"
+                    android:textColor="#2E3A59"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvBloodNA"
+                    android:layout_width="54dp"
+                    android:layout_height="40dp"
+                    android:layout_margin="4dp"
+                    android:background="@drawable/bg_blood_pill"
+                    android:gravity="center"
+                    android:text="N/A"
                     android:textColor="#2E3A59"
                     android:textStyle="bold" />
 

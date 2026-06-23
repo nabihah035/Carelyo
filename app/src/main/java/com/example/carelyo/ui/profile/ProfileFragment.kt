@@ -37,6 +37,7 @@ class ProfileFragment : Fragment() {
     private lateinit var childrenAdapter: ChildrenAdapter
     private var helpSupportDialog: androidx.appcompat.app.AlertDialog? = null
     private var addChildDialog: androidx.appcompat.app.AlertDialog? = null
+    private lateinit var childRecordAgent: com.example.carelyo.agent.core.ChildRecordAgent
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -51,6 +52,7 @@ class ProfileFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         sessionManager = SessionManager(requireContext())
+        childRecordAgent = com.example.carelyo.agent.core.ChildRecordAgent(viewLifecycleOwner.lifecycleScope)
 
         // Setup UI with user data
         setupUserData()
@@ -70,8 +72,19 @@ class ProfileFragment : Fragment() {
                     "INFORM_CHILD_ADD_SUCCESS" -> {
                         requireActivity().runOnUiThread {
                             Toast.makeText(requireContext(), "Child added successfully!", Toast.LENGTH_SHORT).show()
-                            // Refresh children list
                             requestChildrenData()
+                        }
+                    }
+                    "INFORM_CHILD_ADD_FAILED" -> {
+                        requireActivity().runOnUiThread {
+                            val error = message.content["error"] as? String ?: "Unknown error"
+                            Toast.makeText(requireContext(), "Failed to add child: $error", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    "CHILD_FETCH_ERROR" -> {
+                        requireActivity().runOnUiThread {
+                            val reason = message.content["reason"] as? String ?: "Unknown error"
+                            Toast.makeText(requireContext(), "Error: $reason", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
@@ -80,7 +93,7 @@ class ProfileFragment : Fragment() {
 
         // Request children data
         requestChildrenData()
-        
+
         binding.swipeRefreshLayout.setOnRefreshListener {
             requestChildrenData()
         }
@@ -97,9 +110,7 @@ class ProfileFragment : Fragment() {
     private fun setupChildrenRecyclerView() {
         childrenAdapter = ChildrenAdapter(
             onChildClick = { child ->
-                // Navigate to child details screen
                 Toast.makeText(requireContext(), "Selected: ${child.full_name}", Toast.LENGTH_SHORT).show()
-                // TODO: Navigate to child details screen
             },
             onDeleteClick = { child ->
                 showDeleteChildDialog(child)
@@ -108,8 +119,6 @@ class ProfileFragment : Fragment() {
 
         binding.rvChildren.layoutManager = LinearLayoutManager(requireContext())
         binding.rvChildren.adapter = childrenAdapter
-
-        // Initially show empty state
         updateEmptyState(true)
     }
 
@@ -122,8 +131,8 @@ class ProfileFragment : Fragment() {
                     val result = SupabaseClient.client.postgrest["CHILD"].select {
                         filter { eq("parent_id", user.UserID) }
                     }
-                    val children = result.decodeList<Child>().filter { it.status != "unactive" }
-                    
+                    val children = result.decodeList<Child>().filter { it.status != "Inactive" }
+
                     requireActivity().runOnUiThread {
                         childrenAdapter.submitList(children)
                         updateEmptyState(children.isEmpty())
@@ -144,33 +153,21 @@ class ProfileFragment : Fragment() {
 
     private fun updateEmptyState(isEmpty: Boolean) {
         // You can show/hide an empty state view here if you have one
-        if (isEmpty) {
-            // Optionally show a message
-            // binding.tvEmptyState.visibility = View.VISIBLE
-            // binding.rvChildren.visibility = View.GONE
-        } else {
-            // binding.tvEmptyState.visibility = View.GONE
-            // binding.rvChildren.visibility = View.VISIBLE
-        }
     }
 
     private fun setupClickListeners() {
-        // Add child click
         binding.tvAddChild.setOnClickListener {
             showAddChildDialog()
         }
 
-        // Help & Support card
         binding.cardHelpSupport.setOnClickListener {
             showHelpSupportDialog()
         }
 
-        // Notifications card
         binding.cardNotifications.setOnClickListener {
             showNotificationDialog()
         }
 
-        // Logout button
         binding.btnLogOut.setOnClickListener {
             performLogout()
         }
@@ -202,7 +199,7 @@ class ProfileFragment : Fragment() {
 
         switchNotifications?.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("notifications_enabled", isChecked).apply()
-            
+
             val user = sessionManager.getUserSession()
             if (user != null) {
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
@@ -229,79 +226,139 @@ class ProfileFragment : Fragment() {
             return
         }
 
-        // Dismiss any existing dialog
         addChildDialog?.dismiss()
 
-        // Inflate the dialog layout using view binding
         val dialogBinding = DialogAddChildBinding.inflate(LayoutInflater.from(requireContext()))
 
-        // Set up date picker for DOB
+        // Date picker
         dialogBinding.etDob.setOnClickListener {
             showDatePickerDialog(dialogBinding)
         }
 
-        // Set up gender dropdown
-        val genders = arrayOf("Male", "Female")
-        val adapterGender = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, genders)
-        (dialogBinding.etGender as? android.widget.AutoCompleteTextView)?.setAdapter(adapterGender)
+        // Gender selection
+        var selectedGender: String? = null
+        dialogBinding.rgGender.setOnCheckedChangeListener { _, checkedId ->
+            when (checkedId) {
+                R.id.rbMale -> selectedGender = "Male"
+                R.id.rbFemale -> selectedGender = "Female"
+            }
+        }
 
-        // Set up blood type dropdown
-        val bloodTypes = arrayOf("A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-")
-        val adapterBlood = android.widget.ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, bloodTypes)
-        (dialogBinding.etBloodType as? android.widget.AutoCompleteTextView)?.setAdapter(adapterBlood)
+        // Blood type selection
+        var selectedBloodType: String? = null
 
-        // Set up close button
+        fun selectBloodType(textView: android.widget.TextView, bloodType: String?) {
+            val bloodPills = listOf(
+                dialogBinding.tvBloodAplus,
+                dialogBinding.tvBloodAminus,
+                dialogBinding.tvBloodBplus,
+                dialogBinding.tvBloodBminus,
+                dialogBinding.tvBloodOplus,
+                dialogBinding.tvBloodOminus,
+                dialogBinding.tvBloodABplus,
+                dialogBinding.tvBloodABminus,
+                dialogBinding.tvBloodNA
+            )
+
+            bloodPills.forEach { pill ->
+                pill.setBackgroundResource(R.drawable.bg_blood_pill)
+                pill.setTextColor(resources.getColor(R.color.blood_text_default, null))
+            }
+
+            if (bloodType != null && textView != null) {
+                textView.setBackgroundResource(R.drawable.bg_blood_pill_selected)
+                textView.setTextColor(resources.getColor(R.color.white, null))
+                selectedBloodType = bloodType
+            } else {
+                selectedBloodType = null
+            }
+        }
+
+        dialogBinding.tvBloodAplus.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "A+")
+        }
+        dialogBinding.tvBloodAminus.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "A-")
+        }
+        dialogBinding.tvBloodBplus.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "B+")
+        }
+        dialogBinding.tvBloodBminus.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "B-")
+        }
+        dialogBinding.tvBloodOplus.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "O+")
+        }
+        dialogBinding.tvBloodOminus.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "O-")
+        }
+        dialogBinding.tvBloodABplus.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "AB+")
+        }
+        dialogBinding.tvBloodABminus.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "AB-")
+        }
+        dialogBinding.tvBloodNA.setOnClickListener {
+            selectBloodType(it as android.widget.TextView, "N/A")
+        }
+
+        // Close button
         dialogBinding.btnClose.setOnClickListener {
             addChildDialog?.dismiss()
         }
 
+        // Save button
+        dialogBinding.btnSaveChild.setOnClickListener {
+            val name = dialogBinding.etChildName.text?.toString()?.trim()
+            val dob = dialogBinding.etDob.text?.toString()?.trim()
+            val gender = selectedGender
+            val bloodType = selectedBloodType
+            val weight = dialogBinding.etWeight.text?.toString()?.trim()
+            val height = dialogBinding.etHeight.text?.toString()?.trim()
+
+            if (name.isNullOrEmpty()) {
+                Toast.makeText(requireContext(), "Please enter child's name", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (gender == null) {
+                Toast.makeText(requireContext(), "Please select gender", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            println("ProfileFragment: Adding child for Parent_ID: ${user.UserID}")
+            println("ProfileFragment: Child name: $name")
+
+            val child = Child(
+                ChildID = 0,
+                Parent_ID = user.UserID,
+                full_name = name,
+                date_of_birth = if (!dob.isNullOrEmpty()) dob else null,
+                gender = gender,
+                blood_type = bloodType,
+                weight = if (!weight.isNullOrEmpty()) weight else null,
+                height = if (!height.isNullOrEmpty()) height else null,
+                created_at = null,
+                updated_at = null,
+                status = "Active"
+            )
+
+            CarelyoMessageBroker.passMessage(
+                CarelyoMessage(
+                    sender = "ProfileFragment",
+                    receiver = "ChildRecordAgent",
+                    messageType = "REQUEST_ADD_CHILD",
+                    content = mapOf("child" to child)
+                )
+            )
+
+            Toast.makeText(requireContext(), "Adding child...", Toast.LENGTH_SHORT).show()
+            addChildDialog?.dismiss()
+        }
+
         addChildDialog = MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Add New Child")
             .setView(dialogBinding.root)
-            .setPositiveButton("Save") { dialog, _ ->
-                // Get input values
-                val name = dialogBinding.etChildName.text?.toString()?.trim()
-                val dob = dialogBinding.etDob.text?.toString()?.trim()
-                val gender = dialogBinding.etGender.text?.toString()?.trim()
-                val bloodType = dialogBinding.etBloodType.text?.toString()?.trim()
-                val weight = dialogBinding.etWeight.text?.toString()?.trim()
-                val height = dialogBinding.etHeight.text?.toString()?.trim()
-
-                if (name.isNullOrEmpty()) {
-                    Toast.makeText(requireContext(), "Please enter child's name", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                // Create Child object matching the database schema
-                val child = Child(
-                    ChildID = 0, // Will be generated by database
-                    Parent_ID = user.UserID,
-                    full_name = name,
-                    date_of_birth = if (!dob.isNullOrEmpty()) dob else null,
-                    gender = if (!gender.isNullOrEmpty()) gender else null,
-                    blood_type = if (!bloodType.isNullOrEmpty()) bloodType else null,
-                    weight = if (!weight.isNullOrEmpty()) weight else null,
-                    height = if (!height.isNullOrEmpty()) height else null,
-                    created_at = null,
-                    updated_at = null
-                )
-
-                // Send to ChildRecordAgent
-                CarelyoMessageBroker.passMessage(
-                    CarelyoMessage(
-                        sender = "ProfileFragment",
-                        receiver = "ChildRecordAgent",
-                        messageType = "REQUEST_ADD_CHILD",
-                        content = mapOf("child" to child)
-                    )
-                )
-
-                Toast.makeText(requireContext(), "Adding child...", Toast.LENGTH_SHORT).show()
-                dialog.dismiss()
-            }
-            .setNegativeButton("Cancel") { dialog, _ ->
-                dialog.dismiss()
-            }
+            .setCancelable(true)
             .show() as AlertDialog?
     }
 
@@ -323,10 +380,8 @@ class ProfileFragment : Fragment() {
     }
 
     private fun showHelpSupportDialog() {
-        // Dismiss any existing dialog
         helpSupportDialog?.dismiss()
 
-        // Inflate the dialog layout using view binding
         val dialogBinding = DialogHelpSupportBinding.inflate(LayoutInflater.from(requireContext()))
 
         helpSupportDialog = MaterialAlertDialogBuilder(requireContext())
@@ -334,12 +389,10 @@ class ProfileFragment : Fragment() {
             .setCancelable(true)
             .show() as AlertDialog?
 
-        // Set up close button
         dialogBinding.btnCloseDialog.setOnClickListener {
             helpSupportDialog?.dismiss()
         }
 
-        // Make dialog background transparent to show the card design
         helpSupportDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
     }
 
@@ -359,9 +412,7 @@ class ProfileFragment : Fragment() {
 
         btnConfirm.setOnClickListener {
             dialog.dismiss()
-            // Clear session
             sessionManager.clearSession()
-            // Navigate to Login
             val intent = Intent(requireContext(), LoginActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }
@@ -392,7 +443,7 @@ class ProfileFragment : Fragment() {
                 try {
                     SupabaseClient.client.postgrest["CHILD"].update(
                         {
-                            set("status", "unactive")
+                            set("status", "Inactive")
                         }
                     ) {
                         filter { eq("childid", child.ChildID) }
@@ -415,6 +466,8 @@ class ProfileFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        CarelyoMessageBroker.unregisterAgent("ProfileFragment")
+        CarelyoMessageBroker.unregisterAgent("ChildRecordAgent")
         _binding = null
         helpSupportDialog?.dismiss()
         helpSupportDialog = null
