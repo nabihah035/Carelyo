@@ -7,8 +7,9 @@ import com.example.carelyo.BuildConfig
 import com.example.carelyo.api.supabase.SupabaseClient
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.entity.DoctorVisit
+import com.example.carelyo.data.entity.DoctorVisitInsert
 import com.example.carelyo.data.session.SessionManager
-import com.google.ai.client.generativeai.GenerativeModel
+import dev.shreyaspatil.ai.client.generativeai.GenerativeModel
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -216,14 +217,14 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
                 val currentDate = dateFormat.format(Date())
 
                 // Create the doctor visit object
-                val newVisit = mapOf(
-                    "childid" to childId,
-                    "visit_date" to currentDate,
-                    "clinic_name" to clinicName,
-                    "doctor_name" to doctorName,
-                    "raw_notes" to rawNotes,
-                    "ai_summary" to aiSummary,
-                    "summary_language" to summaryLanguage
+                val newVisit = DoctorVisitInsert(
+                    ChildID = childId,
+                    visit_date = currentDate,
+                    clinic_name = clinicName,
+                    doctor_name = doctorName,
+                    raw_notes = rawNotes,
+                    ai_summary = aiSummary,
+                    summary_language = summaryLanguage
                 )
 
                 println("[DoctorSummaryVM]: Saving doctor visit to Supabase")
@@ -231,7 +232,7 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
 
                 // Insert into Supabase
                 val result = SupabaseClient.client.postgrest["DOCTOR_VISIT"]
-                    .insert(newVisit)
+                    .insert(newVisit) { select() }
                     .decodeSingle<DoctorVisit>()
 
                 println("[DoctorSummaryVM]: Doctor visit saved successfully with ID: ${result.DocVisitID}")

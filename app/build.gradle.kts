@@ -75,8 +75,8 @@ dependencies {
     implementation(libs.androidx.cardview)
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 
-    // GEMINI SDK
-    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    // GEMINI SDK (KMP version for Ktor 3 compatibility)
+    implementation("dev.shreyaspatil.generativeai:generativeai-google:0.9.0-1.1.0")
 
     // FIREBASE
     implementation(libs.firebase.messaging)

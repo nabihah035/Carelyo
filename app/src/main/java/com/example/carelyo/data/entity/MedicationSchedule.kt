@@ -16,3 +16,10 @@ data class MedicationSchedule(
     val scheduled_time: String? = null,   // ISO-8601 TIMESTAMPTZ e.g. "2026-06-05T08:00:00+08:00"
     val created_at: String? = null
 )
+
+@Serializable
+data class MedicationScheduleInsert(
+    @SerialName("medid")
+    val MedID: Int,
+    val scheduled_time: String? = null
+)

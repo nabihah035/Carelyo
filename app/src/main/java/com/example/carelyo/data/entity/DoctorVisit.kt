@@ -17,3 +17,14 @@ data class DoctorVisit(
     val summary_language: String? = null,
     val created_at: String? = null
 )
+
+@Serializable
+data class DoctorVisitInsert(
+    @SerialName("childid") val ChildID: Int,
+    val visit_date: String,
+    val clinic_name: String,
+    val doctor_name: String,
+    val raw_notes: String,
+    val ai_summary: String,
+    val summary_language: String
+)

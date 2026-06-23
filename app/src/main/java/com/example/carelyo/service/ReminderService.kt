@@ -29,7 +29,8 @@ class ReminderService(private val application: Application) {
                 ParentID = parentId,
                 reminder_type = reminderType,
                 scheduled_at = scheduledAt,
-                is_sent = false
+                is_sent = false,
+                noti_status = "Unread" // Ensure new reminders start as Unread
             )
 
             val result = withContext(Dispatchers.IO) {
@@ -50,6 +51,7 @@ class ReminderService(private val application: Application) {
      */
     suspend fun markReminderAsSent(remindId: Int): Boolean {
         return try {
+            // Don't check if already sent - we want to update status anyway
             val reminder = withContext(Dispatchers.IO) {
                 SupabaseClient.client.postgrest["REMINDER"]
                     .select {
@@ -59,6 +61,7 @@ class ReminderService(private val application: Application) {
                     .firstOrNull()
             }
             reminder?.let {
+                // Update both noti_status and is_sent
                 val updatedReminder = it.copy(noti_status = "Read", is_sent = true)
                 withContext(Dispatchers.IO) {
                     SupabaseClient.client.postgrest["REMINDER"]
@@ -66,6 +69,7 @@ class ReminderService(private val application: Application) {
                             filter { eq("remindid", remindId) }
                         }
                 }
+                Log.d("ReminderService", "Marked reminder $remindId as Read")
                 true
             } ?: false
         } catch (e: Exception) {
@@ -99,21 +103,17 @@ class ReminderService(private val application: Application) {
      */
     suspend fun getReminders(parentId: Int): List<Reminder> {
         return try {
-            withContext(Dispatchers.IO) {
-                SupabaseClient.client.postgrest["REMINDER"]
-                    .select {
-                        filter { eq("parentid", parentId) }
-                        filter { neq("noti_status", "Delete") }
-                        order("created_at", Order.DESCENDING)
+            SupabaseClient.client.postgrest["REMINDER"]
+                .select {
+                    filter {
+                        eq("parentid", parentId)
                     }
-                    .decodeList<Reminder>()
-            }
+                }
+                .decodeList<Reminder>()
         } catch (e: Exception) {
-            Log.e("ReminderService", "Failed to get reminders", e)
             emptyList()
         }
     }
-
 
     /**
      * Deletes a specific reminder by ID
@@ -146,8 +146,14 @@ class ReminderService(private val application: Application) {
     suspend fun markAllAsRead(parentId: Int): Boolean {
         return try {
             val reminders = getUnreadReminders(parentId)
+            Log.d("ReminderService", "Marking ${reminders.size} reminders as read")
+
+            // Update all unread reminders directly in the database
             for (reminder in reminders) {
-                markReminderAsSent(reminder.RemindID)
+                val success = markReminderAsSent(reminder.RemindID)
+                if (!success) {
+                    Log.e("ReminderService", "Failed to mark reminder ${reminder.RemindID} as read")
+                }
             }
             true
         } catch (e: Exception) {

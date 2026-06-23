@@ -1,6 +1,7 @@
 package com.example.carelyo.ui.dashboard
 
 import android.app.Application
+import android.content.Context
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -44,6 +45,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     val unreadRemindersCount: LiveData<Int> = _unreadRemindersCount
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+    private var lastResetDay: String = ""
 
     // Cache to avoid re-fetching if already loaded
     private var cachedChildren: List<Child>? = null
@@ -51,6 +53,9 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private val CACHE_DURATION_MS = 30000L // 30 seconds cache
 
     fun loadDashboardData() {
+        // Check and reset medication states for new day
+        checkAndResetMedicationStates()
+
         val currentTime = System.currentTimeMillis()
         if (cachedChildren != null && (currentTime - lastFetchTime) < CACHE_DURATION_MS) {
             _childrenList.postValue(cachedChildren)
@@ -85,6 +90,32 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                 _isLoading.postValue(false)
                 _errorMessage.postValue("Error loading data: ${e.localizedMessage}")
             }
+        }
+    }
+
+    /**
+     * Check if a new day has started and reset medication states accordingly
+     */
+    private fun checkAndResetMedicationStates() {
+        try {
+            val today = dateFormat.format(Date())
+            if (lastResetDay != today) {
+                // Only clear entries from previous days, not today's
+                val prefs = getApplication<Application>().getSharedPreferences("medication_prefs", Context.MODE_PRIVATE)
+                val editor = prefs.edit()
+
+                prefs.all.keys.forEach { key ->
+                    if (key.startsWith("med_") && !key.contains(today)) {
+                        editor.remove(key)
+                    }
+                }
+                editor.apply()
+
+                lastResetDay = today
+                println("[$TAG]: Cleaned up old medication entries for new day: $today")
+            }
+        } catch (e: Exception) {
+            println("[$TAG]: Error resetting medication states: ${e.localizedMessage}")
         }
     }
 
@@ -147,8 +178,14 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         }
                     }.decodeList<Reminder>()
 
-                _unreadRemindersCount.postValue(reminders.size)
-                println("[$TAG]: Unread reminders count: ${reminders.size}")
+                val count = reminders.size
+                _unreadRemindersCount.postValue(count)
+
+                // Save to SharedPreferences for badge visibility
+                val prefs = getApplication<Application>().getSharedPreferences("carelyo_prefs", Context.MODE_PRIVATE)
+                prefs.edit().putInt("unread_count", count).apply()
+
+                println("[$TAG]: Unread reminders count: $count")
             } catch (e: Exception) {
                 println("[$TAG]: Error fetching reminders count: ${e.localizedMessage}")
                 _unreadRemindersCount.postValue(0)
@@ -184,6 +221,12 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     fun fetchAllDataForChild(childId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // Clear existing data immediately to avoid old child's data showing up in UI
+                _upcomingVaccinations.postValue(emptyList())
+                _upcomingMedications.postValue(emptyList())
+                _upcomingAppointments.postValue(emptyList())
+                _childAllergies.postValue(emptyList())
+
                 println("[$TAG]: === FETCHING ALL DATA FOR CHILD ID: $childId ===")
 
                 val deferredVaccinations = async { fetchUpcomingVaccinations(childId) }

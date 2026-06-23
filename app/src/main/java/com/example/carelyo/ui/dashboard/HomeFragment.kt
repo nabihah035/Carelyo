@@ -19,6 +19,7 @@ import com.example.carelyo.ui.dashboard.adapters.MedicationAdapter
 import com.example.carelyo.ui.dashboard.adapters.UpcomingEventAdapter
 import com.example.carelyo.ui.dashboard.models.MedicationItem
 import com.example.carelyo.ui.dashboard.models.UpcomingEvent
+import com.example.carelyo.ui.dashboard.utils.MedicationPersistenceHelper
 import com.google.android.material.chip.Chip
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,14 +30,20 @@ class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
 
+    // Removed duplicate dateFormat declaration
+    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val viewModel: DashboardViewModel by activityViewModels()
     private lateinit var sessionManager: SessionManager
+    private lateinit var medicationPersistenceHelper: MedicationPersistenceHelper
     private var selectedChild: Child? = null
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
     // Adapters
     private lateinit var medicationAdapter: MedicationAdapter
     private lateinit var upcomingEventAdapter: UpcomingEventAdapter
+
+    // Cache medication items with their IDs for persistence
+    private var currentMedicationItems: List<MedicationItem> = emptyList()
+    private var currentMedicationList: List<UpcomingMedication> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -49,6 +56,7 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         sessionManager = SessionManager(requireContext())
+        medicationPersistenceHelper = MedicationPersistenceHelper(requireContext())
 
         // Initialize adapters
         setupAdapters()
@@ -67,9 +75,24 @@ class HomeFragment : Fragment() {
         medicationAdapter = MedicationAdapter(
             items = emptyList(),
             onItemCheckChanged = { item, isChecked ->
-                Toast.makeText(requireContext(), "${item.name} ${if (isChecked) "completed" else "unchecked"}", Toast.LENGTH_SHORT).show()
-                // Update progress
+                // Use the item's medicationId directly (it's already unique and stable)
+                val medicationId = item.medicationId ?: return@MedicationAdapter
+
+                medicationPersistenceHelper.setMedicationCompletedToday(
+                    medicationId,
+                    item.childId,
+                    item.scheduledTime,
+                    isChecked
+                )
+
+                // Update the progress
                 updateMedicationProgress()
+
+                Toast.makeText(
+                    requireContext(),
+                    "${item.name} ${if (isChecked) "marked as taken" else "marked as not taken"}",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         )
         binding.rvMedications.apply {
@@ -135,6 +158,7 @@ class HomeFragment : Fragment() {
 
         // Observe upcoming medications
         viewModel.upcomingMedications.observe(viewLifecycleOwner) { medications ->
+            currentMedicationList = medications
             updateMedicationListFromData(medications)
             updateUpcomingEventsFromData()
         }
@@ -245,19 +269,34 @@ class HomeFragment : Fragment() {
         if (medications.isEmpty()) {
             binding.tvMedicationProgress.text = "No medications"
             medicationAdapter.updateItems(emptyList())
+            currentMedicationItems = emptyList()
             return
         }
 
-        val items = medications.map { med ->
+        // Build items with persistence state
+        val items = medications.mapIndexed { index, med ->
+            // Generate a stable unique ID based on childId, medication name, and scheduled time
+            // This ensures the same medication gets the same ID across page loads
+            val uniqueId = "${selectedChild?.ChildID ?: 0}_${med.medicationName}_${med.scheduledTime}".hashCode()
+
+            val isCompletedToday = medicationPersistenceHelper.isMedicationCompletedToday(
+                uniqueId,
+                selectedChild?.ChildID ?: 0,
+                med.scheduledTime
+            )
+
             MedicationItem(
                 name = med.medicationName,
                 dosage = med.dosage ?: "",
                 time = formatTime(med.scheduledTime),
-                isCompleted = false,
-                childId = med.childId
+                isCompleted = isCompletedToday,
+                childId = med.childId,
+                medicationId = uniqueId,  // Use the generated unique ID
+                scheduledTime = med.scheduledTime
             )
         }
 
+        currentMedicationItems = items
         medicationAdapter.updateItems(items)
         updateMedicationProgress()
     }
@@ -266,6 +305,7 @@ class HomeFragment : Fragment() {
         val items = medicationAdapter.getItems()
         val total = items.size
         val completed = items.count { it.isCompleted }
+
         binding.tvMedicationProgress.text = if (total > 0) {
             "$completed/$total done"
         } else {
@@ -288,17 +328,7 @@ class HomeFragment : Fragment() {
             )
         }
 
-        viewModel.upcomingMedications.value?.forEach { med ->
-            events.add(
-                UpcomingEvent(
-                    type = UpcomingEvent.Type.MEDICATION,
-                    title = med.medicationName,
-                    description = "${med.dosage ?: ""} at ${formatTime(med.scheduledTime)}",
-                    date = formatTimeShort(med.scheduledTime),
-                    childId = med.childId
-                )
-            )
-        }
+        // Removed medications from Upcoming Events since they are already shown in checkboxes.
 
         viewModel.upcomingAppointments.value?.forEach { app ->
             events.add(

@@ -21,7 +21,8 @@ class MedicationAdapter(
     }
 
     override fun onBindViewHolder(holder: MedicationViewHolder, position: Int) {
-        holder.bind(items[position])
+        val item = items[position]
+        holder.bind(item)
     }
 
     override fun getItemCount(): Int = items.size
@@ -33,32 +34,43 @@ class MedicationAdapter(
 
     fun getItems(): List<MedicationItem> = items
 
+    fun updateItemCompletion(medicationId: Int, childId: Int, scheduledTime: String?, isCompleted: Boolean) {
+        val index = items.indexOfFirst {
+            it.medicationId == medicationId &&
+                    it.childId == childId &&
+                    it.scheduledTime == scheduledTime
+        }
+        if (index != -1) {
+            val updatedItem = items[index].copy(isCompleted = isCompleted)
+            items = items.toMutableList().apply { set(index, updatedItem) }
+            notifyItemChanged(index)
+        }
+    }
+
     inner class MedicationViewHolder(
         private val binding: ItemMedicationBinding
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: MedicationItem) {
-            binding.tvMedicationName.text = item.name
-            binding.tvMedicationDosage.text = item.dosage
-            binding.tvMedicationTime.text = item.time
+            binding.apply {
+                tvMedicationName.text = item.name
+                tvMedicationDosage.text = item.dosage
+                tvMedicationTime.text = item.time
+                cbMedication.isChecked = item.isCompleted
 
-            binding.cbMedication.isChecked = item.isCompleted
-            binding.cbMedication.setOnCheckedChangeListener { _, isChecked ->
-                // Update the item's completion status
-                val updatedItem = item.copy(isCompleted = isChecked)
-                // Update the item in the list
-                val index = items.indexOf(item)
-                if (index != -1) {
-                    val mutableList = items.toMutableList()
-                    mutableList[index] = updatedItem
-                    items = mutableList
+                // Important: Set the checked change listener
+                cbMedication.setOnCheckedChangeListener(null)
+                cbMedication.isChecked = item.isCompleted
+                cbMedication.setOnCheckedChangeListener { _, isChecked ->
+                    val updatedItem = item.copy(isCompleted = isChecked)
+                    onItemCheckChanged(updatedItem, isChecked)
+                    // Update the item in the list to maintain consistency
+                    val position = items.indexOf(item)
+                    if (position != -1) {
+                        items = items.toMutableList().apply { set(position, updatedItem) }
+                    }
                 }
-                onItemCheckChanged(updatedItem, isChecked)
             }
-
-            // Strike through text if completed
-            binding.tvMedicationName.paint.isStrikeThruText = item.isCompleted
-            binding.tvMedicationDosage.paint.isStrikeThruText = item.isCompleted
         }
     }
 }

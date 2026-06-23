@@ -7,7 +7,10 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.example.carelyo.data.entity.Reminder
 import com.example.carelyo.service.ReminderService
+import com.example.carelyo.api.supabase.SupabaseClient
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 
 sealed class ReminderOperationResult {
     data class Success(val message: String) : ReminderOperationResult()
@@ -37,71 +40,219 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     fun loadReminders(parentId: Int) {
         currentParentId = parentId
         _isLoading.value = true
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                // Routing call properly through Service layer
+                // Get all reminders, not just unread ones
                 val result = reminderService.getReminders(parentId)
                 allReminders = result
-                _reminders.value = result
-                updateUnreadCount(result)
-                _operationResult.value = ReminderOperationResult.Success("Reminders loaded")
+                _reminders.postValue(result)
+                updateUnreadCount(result) // This will count unread ones
+                _operationResult.postValue(ReminderOperationResult.Success("Reminders loaded"))
             } catch (e: Exception) {
-                _operationResult.value = ReminderOperationResult.Error(e.message ?: "Failed to load reminders")
+                _operationResult.postValue(ReminderOperationResult.Error(e.message ?: "Failed to load reminders"))
             } finally {
-                _isLoading.value = false
+                _isLoading.postValue(false)
             }
         }
     }
 
     fun markAsRead(reminder: Reminder) {
-        if (reminder.is_sent) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Update both is_sent and noti_status in the database
+                SupabaseClient.client.postgrest["REMINDER"]
+                    .update(
+                        {
+                            set("is_sent", true)
+                            set("noti_status", "Read")
+                        }
+                    ) {
+                        filter { eq("remindid", reminder.RemindID) }
+                    }
 
-        viewModelScope.launch {
-            val success = reminderService.markReminderAsSent(reminder.RemindID)
-            if (success) {
+                // Update local list
                 val updatedReminder = reminder.copy(noti_status = "Read", is_sent = true)
                 allReminders = allReminders.map {
                     if (it.RemindID == reminder.RemindID) updatedReminder else it
                 }
-                _reminders.value = allReminders
+                _reminders.postValue(allReminders)
                 updateUnreadCount(allReminders)
-                _operationResult.value = ReminderOperationResult.Success("Marked as read")
-            } else {
-                _operationResult.value = ReminderOperationResult.Error("Failed to update status on server")
+                _operationResult.postValue(ReminderOperationResult.Success("Marked as read"))
+            } catch (e: Exception) {
+                _operationResult.postValue(ReminderOperationResult.Error("Failed to update status: ${e.message}"))
             }
         }
     }
 
     fun markAllAsRead() {
-        if (currentParentId == -1) return
-        viewModelScope.launch {
-            val success = reminderService.markAllAsRead(currentParentId)
-            if (success) {
-                allReminders = allReminders.map { it.copy(noti_status = "Read", is_sent = true) }
-                _reminders.value = allReminders
+        if (currentParentId == -1) {
+            _operationResult.value = ReminderOperationResult.Error("No parent selected")
+            return
+        }
+
+        _isLoading.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Update all unread reminders for this parent
+                SupabaseClient.client.postgrest["REMINDER"]
+                    .update(
+                        {
+                            set("is_sent", true)
+                            set("noti_status", "Read")
+                        }
+                    ) {
+                        filter {
+                            eq("parentid", currentParentId)
+                            eq("noti_status", "Unread")
+                        }
+                    }
+
+                // Update all reminders to Read status in local list
+                allReminders = allReminders.map {
+                    if (it.noti_status == "Unread") {
+                        it.copy(noti_status = "Read", is_sent = true)
+                    } else {
+                        it
+                    }
+                }
+                _reminders.postValue(allReminders)
                 updateUnreadCount(allReminders)
-                _operationResult.value = ReminderOperationResult.Success("All marked as read")
-            } else {
-                _operationResult.value = ReminderOperationResult.Error("Failed to update all items")
+                _operationResult.postValue(ReminderOperationResult.Success("All reminders marked as read"))
+            } catch (e: Exception) {
+                _operationResult.postValue(ReminderOperationResult.Error("Error: ${e.message}"))
+            } finally {
+                _isLoading.postValue(false)
             }
         }
     }
 
     fun deleteReminder(reminder: Reminder) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             val success = reminderService.deleteReminder(reminder.RemindID)
             if (success) {
                 allReminders = allReminders.filter { it.RemindID != reminder.RemindID }
-                _reminders.value = allReminders
+                _reminders.postValue(allReminders)
                 updateUnreadCount(allReminders)
-                _operationResult.value = ReminderOperationResult.Success("Reminder deleted")
+                _operationResult.postValue(ReminderOperationResult.Success("Reminder deleted"))
             } else {
-                _operationResult.value = ReminderOperationResult.Error("Failed to delete reminder from server")
+                _operationResult.postValue(ReminderOperationResult.Error("Failed to delete reminder from server"))
             }
         }
     }
 
     private fun updateUnreadCount(reminders: List<Reminder>) {
-        _unreadCount.value = reminders.count { it.noti_status == "Unread" }
+        val count = reminders.count { it.noti_status == "Unread" }
+        _unreadCount.postValue(count)
+        // Also update the notification badge via SharedPreferences
+        getApplication<Application>().getSharedPreferences("carelyo_prefs", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putInt("unread_count", count)
+            .apply()
+    }
+
+    // --- Medication Logic ---
+
+    private val _medications = MutableLiveData<List<com.example.carelyo.data.entity.Medication>>(emptyList())
+    val medications: LiveData<List<com.example.carelyo.data.entity.Medication>> = _medications
+
+    private val _children = MutableLiveData<List<com.example.carelyo.data.entity.Child>>(emptyList())
+    val children: LiveData<List<com.example.carelyo.data.entity.Child>> = _children
+
+    fun loadMedicationsAndChildren(parentId: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Fetch children
+                val childrenList = com.example.carelyo.api.supabase.SupabaseClient.client
+                    .postgrest["CHILD"]
+                    .select {
+                        filter { eq("parent_id", parentId) }
+                    }.decodeList<com.example.carelyo.data.entity.Child>()
+
+                _children.postValue(childrenList)
+
+                if (childrenList.isNotEmpty()) {
+                    val childIds = childrenList.map { it.ChildID }
+                    // Fetch medications
+                    val meds = com.example.carelyo.api.supabase.SupabaseClient.client
+                        .postgrest["MEDICATION"]
+                        .select {
+                            filter { isIn("childid", childIds) }
+                        }.decodeList<com.example.carelyo.data.entity.Medication>()
+
+                    _medications.postValue(meds)
+                } else {
+                    _medications.postValue(emptyList())
+                }
+            } catch (e: Exception) {
+                _operationResult.postValue(ReminderOperationResult.Error("Failed to load medications: ${e.message}"))
+            }
+        }
+    }
+
+    fun addMedication(medInsert: com.example.carelyo.data.entity.MedicationInsert, schedules: List<String>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Insert Medication
+                val insertedMed = com.example.carelyo.api.supabase.SupabaseClient.client
+                    .postgrest["MEDICATION"]
+                    .insert(medInsert) { select() }
+                    .decodeSingle<com.example.carelyo.data.entity.Medication>()
+
+                // Insert Schedules
+                val scheduleInserts = schedules.map { time ->
+                    com.example.carelyo.data.entity.MedicationScheduleInsert(
+                        MedID = insertedMed.MedID,
+                        scheduled_time = time
+                    )
+                }
+
+                if (scheduleInserts.isNotEmpty()) {
+                    com.example.carelyo.api.supabase.SupabaseClient.client
+                        .postgrest["MEDICATION_SCHEDULE"]
+                        .insert(scheduleInserts)
+                }
+
+                _operationResult.postValue(ReminderOperationResult.Success("Medication added successfully"))
+                loadMedicationsAndChildren(currentParentId) // reload
+            } catch (e: Exception) {
+                _operationResult.postValue(ReminderOperationResult.Error("Failed to add medication: ${e.message}"))
+            }
+        }
+    }
+
+    fun toggleMedicationActive(medication: com.example.carelyo.data.entity.Medication, isActive: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                com.example.carelyo.api.supabase.SupabaseClient.client
+                    .postgrest["MEDICATION"]
+                    .update({ set("is_active", isActive) }) {
+                        filter { eq("medid", medication.MedID) }
+                    }
+                loadMedicationsAndChildren(currentParentId)
+            } catch (e: Exception) {
+                _operationResult.postValue(ReminderOperationResult.Error("Failed to toggle medication"))
+            }
+        }
+    }
+
+    fun deleteMedication(medication: com.example.carelyo.data.entity.Medication) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Delete schedules first
+                com.example.carelyo.api.supabase.SupabaseClient.client
+                    .postgrest["MEDICATION_SCHEDULE"]
+                    .delete { filter { eq("medid", medication.MedID) } }
+
+                // Then delete medication
+                com.example.carelyo.api.supabase.SupabaseClient.client
+                    .postgrest["MEDICATION"]
+                    .delete { filter { eq("medid", medication.MedID) } }
+
+                _operationResult.postValue(ReminderOperationResult.Success("Medication deleted"))
+                loadMedicationsAndChildren(currentParentId)
+            } catch (e: Exception) {
+                _operationResult.postValue(ReminderOperationResult.Error("Failed to delete medication"))
+            }
+        }
     }
 }

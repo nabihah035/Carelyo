@@ -21,7 +21,7 @@ class DashboardActivity : AppCompatActivity() {
     private val viewModel: DashboardViewModel by viewModels()
     private lateinit var prefs: SharedPreferences
     private val prefListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "notifications_enabled") {
+        if (key == "notifications_enabled" || key == "unread_count") {
             updateBadgeVisibility()
         }
     }
@@ -60,6 +60,13 @@ class DashboardActivity : AppCompatActivity() {
         viewModel.loadDashboardData()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Refresh the unread count when returning to the dashboard
+        viewModel.loadDashboardData()
+        updateBadgeVisibility()
+    }
+
     private fun setupAiHelpButton() {
         binding.fabAiHelp.setOnClickListener {
             val intent = Intent(this, HelpActivity::class.java)
@@ -79,7 +86,9 @@ class DashboardActivity : AppCompatActivity() {
 
     private fun updateBadgeVisibility() {
         val isEnabled = prefs.getBoolean("notifications_enabled", true)
-        val count = viewModel.unreadRemindersCount.value ?: 0
+        // Get count from SharedPreferences or from ViewModel
+        val count = prefs.getInt("unread_count", viewModel.unreadRemindersCount.value ?: 0)
+
         if (count > 0 && isEnabled) {
             binding.tvNotificationBadge.visibility = View.VISIBLE
             binding.tvNotificationBadge.text = count.toString()
@@ -93,10 +102,12 @@ class DashboardActivity : AppCompatActivity() {
      */
     private fun observeViewModel() {
         viewModel.unreadRemindersCount.observe(this) { count ->
+            // Save to SharedPreferences for persistence
+            prefs.edit().putInt("unread_count", count ?: 0).apply()
             updateBadgeVisibility()
         }
     }
-    
+
     override fun onDestroy() {
         super.onDestroy()
         prefs.unregisterOnSharedPreferenceChangeListener(prefListener)
