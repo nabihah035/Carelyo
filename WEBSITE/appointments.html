@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointments - Carelyo Admin</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <main class="main-content">
+        <header class="page-header">
+            <h2 class="page-title">Appointment Management</h2>
+            <button class="btn btn-primary">
+                <i class="ph ph-plus"></i>
+                New Appointment
+            </button>
+        </header>
+
+        <div class="card mb-6" style="padding: 16px 24px; display: flex; gap: 16px; align-items: center;">
+            <i class="ph ph-funnel" style="color: var(--text-muted); font-size: 20px;"></i>
+            <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all" id="filter-all">All (0)</button>
+                <button class="filter-tab" data-filter="Confirmed" id="filter-confirmed">Confirmed (0)</button>
+                <button class="filter-tab" data-filter="Pending" id="filter-pending">Pending (0)</button>
+            </div>
+        </div>
+
+        <div id="appointments-container" style="display: flex; flex-direction: column; gap: 16px;">
+            <!-- Data populated by JS -->
+            <div class="card" style="text-align: center;">Loading appointments...</div>
+        </div>
+    </main>
+
+    <!-- App Scripts -->
+    <script src="supabaseClient.js"></script>
+    <script src="app.js"></script>
+    <script src="appointments.js"></script>
+</body>
+</html>

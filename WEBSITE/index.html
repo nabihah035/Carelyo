@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Carelyo Admin</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <main class="main-content">
+        <header class="page-header">
+            <h2 class="page-title">Dashboard Overview</h2>
+        </header>
+
+        <section class="grid-4">
+            <div class="card stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon primary">
+                        <i class="ph ph-users"></i>
+                    </div>
+                    <span class="stat-title">Total Parents</span>
+                </div>
+                <div class="stat-value" id="stat-parents">...</div>
+            </div>
+            
+            <div class="card stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon success">
+                        <i class="ph ph-heart"></i>
+                    </div>
+                    <span class="stat-title">Children Registered</span>
+                </div>
+                <div class="stat-value" id="stat-children">...</div>
+            </div>
+            
+            <div class="card stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon warning">
+                        <i class="ph ph-calendar-blank"></i>
+                    </div>
+                    <span class="stat-title">Appointments Today</span>
+                </div>
+                <div class="stat-value" id="stat-appointments">...</div>
+            </div>
+            
+            <div class="card stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon danger">
+                        <i class="ph ph-warning-circle"></i>
+                    </div>
+                    <span class="stat-title">Overdue Vaccinations</span>
+                </div>
+                <div class="stat-value" id="stat-overdue">...</div>
+            </div>
+        </section>
+
+        <section class="grid-2">
+            <div class="card">
+                <h3 class="mb-4">Vaccination Completion Trend</h3>
+                <canvas id="vaccinationChart" height="200"></canvas>
+            </div>
+            
+            <div class="card">
+                <h3 class="mb-4">Parent Registration Growth</h3>
+                <canvas id="registrationChart" height="200"></canvas>
+            </div>
+        </section>
+
+        <section class="mt-4">
+            <div class="card">
+                <h3 class="mb-4">Recent Activities</h3>
+                <div id="recent-activities-list">
+                    <!-- Activities will be populated here by JS -->
+                    <p style="color: var(--text-muted);">Loading activities...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- App Scripts -->
+    <script src="supabaseClient.js"></script>
+    <script src="app.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>
