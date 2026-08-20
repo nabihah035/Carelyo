@@ -8,7 +8,8 @@ async function loadDashboardData() {
         // Fetch Total Parents (assuming role isn't strictly enforced or we count all users)
         const { count: parentsCount, error: parentError } = await window.supabaseClient
             .from('USER')
-            .select('*', { count: 'exact', head: true });
+            .select('*', { count: 'exact', head: true })
+            .ilike('role', 'parent');
         
         if (!parentError) {
             document.getElementById('stat-parents').innerText = parentsCount.toLocaleString();
@@ -34,9 +35,16 @@ async function loadDashboardData() {
             document.getElementById('stat-appointments').innerText = apptCount.toLocaleString();
         }
 
-        // Fetch Overdue Vaccinations (Mocked for now as complex join logic is needed)
-        // In a real scenario, this would query CHILD_VACCINE joined with VACCINATION
-        document.getElementById('stat-overdue').innerText = "23";
+        const { count: overdueCount, error: overdueError } = await window.supabaseClient
+            .from('CHILD_VACCINE')
+            .select('*', { count: 'exact', head: true })
+            .eq('status', 'Overdue');
+        
+        if (!overdueError) {
+            document.getElementById('stat-overdue').innerText = overdueCount.toLocaleString();
+        } else {
+            document.getElementById('stat-overdue').innerText = '0';
+        }
 
         // Fetch Recent Activities
         loadRecentActivities();
@@ -49,23 +57,20 @@ async function loadDashboardData() {
 async function loadRecentActivities() {
     const listContainer = document.getElementById('recent-activities-list');
     
-    // We try to fetch from ACTIVITY_LOG. If it fails (table not created yet), we use mock data.
     const { data, error } = await window.supabaseClient
         .from('ACTIVITY_LOG')
         .select('*, USER(full_name)')
         .order('created_at', { ascending: false })
         .limit(5);
 
-    if (error || !data || data.length === 0) {
-        // Fallback mock data matching screenshot
-        const mockActivities = [
-            { title: "New parent account registered", USER: { full_name: "Siti Nurhaliza" }, created_at: new Date(Date.now() - 5 * 60000).toISOString() },
-            { title: "Vaccination record updated", USER: { full_name: "Ahmad Abdullah" }, created_at: new Date(Date.now() - 23 * 60000).toISOString() },
-            { title: "Appointment scheduled", USER: { full_name: "Nurul Izzah" }, created_at: new Date(Date.now() - 60 * 60000).toISOString() },
-            { title: "Health record added", USER: { full_name: "Farah Liyana" }, created_at: new Date(Date.now() - 120 * 60000).toISOString() },
-            { title: "Reminder sent for vaccination", USER: null, created_at: new Date(Date.now() - 180 * 60000).toISOString() },
-        ];
-        renderActivities(mockActivities, listContainer);
+    if (error) {
+        console.error("Error fetching recent activities:", error);
+        listContainer.innerHTML = '<div style="color: red; text-align: center; padding: 10px;">Failed to load activities</div>';
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        listContainer.innerHTML = '<div style="text-align: center; padding: 10px; color: var(--text-muted);">No recent activities found</div>';
     } else {
         renderActivities(data, listContainer);
     }
@@ -90,16 +95,21 @@ function renderActivities(activities, container) {
 }
 
 function getTimeAgo(dateString) {
+    if (!dateString) return 'Unknown time';
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now - date;
+    
+    if (diffMs < 0) return 'Just now'; // If time is slightly in the future due to clock sync
+
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 60) return `${diffMins} minutes ago`;
-    if (diffHours < 24) return `${diffHours} hours ago`;
-    return `${diffDays} days ago`;
+    if (diffMins === 0) return `Just now`;
+    if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 }
 
 function initCharts() {
@@ -111,11 +121,11 @@ function initCharts() {
             labels: ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'],
             datasets: [{
                 label: 'Completed',
-                data: [0, 0, 0, 0, 0, 0, 0], // Mock empty bottom
+                data: [120, 135, 150, 165, 180, 210, 225], 
                 backgroundColor: '#10b981'
             }, {
                 label: 'Pending',
-                data: [140, 160, 190, 200, 220, 240, 260], // Mock data
+                data: [20, 25, 40, 35, 40, 30, 35],
                 backgroundColor: '#ef4444'
             }]
         },
@@ -123,7 +133,8 @@ function initCharts() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: { beginAtZero: true }
+                x: { stacked: true },
+                y: { beginAtZero: true, stacked: true }
             }
         }
     });

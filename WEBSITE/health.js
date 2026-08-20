@@ -23,7 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     *,
                     USER!inner(full_name),
                     ALLERGIE (allergy_name),
-                    MEDICAL_HISTORY (condition_name, diagnosis_date)
+                    MEDICAL_HISTORY (*),
+                    DOCTOR_VISIT (*)
                 `)
                 .order('full_name', { ascending: true });
 
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             allChildren = data || [];
+            window._allChildren = allChildren;
             document.getElementById('total-children-badge').innerText = `Total Children: ${allChildren.length}`;
             renderRecords(allChildren);
 
@@ -67,11 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const parentName = child.USER ? child.USER.full_name : 'Unknown Parent';
             const age = calculateAge(child.date_of_birth);
             
-            // Mock last visit since it requires joining DOCTOR_VISIT
-            const lastVisit = '2026-04-15'; // Mocked
+            let lastVisit = 'N/A';
+            if (child.DOCTOR_VISIT && child.DOCTOR_VISIT.length > 0) {
+                const sortedVisits = child.DOCTOR_VISIT.sort((a,b) => new Date(b.visit_date) - new Date(a.visit_date));
+                lastVisit = sortedVisits[0].visit_date || 'N/A';
+            }
             
             // Get recent diagnosis from MEDICAL_HISTORY or mock
-            let recentDiagnosis = 'Healthy - Routine Checkup';
+            let recentDiagnosis = 'None';
             if (child.MEDICAL_HISTORY && child.MEDICAL_HISTORY.length > 0) {
                 // sort by date descending
                 const sortedHistory = child.MEDICAL_HISTORY.sort((a,b) => new Date(b.diagnosis_date) - new Date(a.diagnosis_date));
@@ -101,10 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             <h3 style="font-size: 20px; margin-bottom: 4px;">${child.full_name}</h3>
                             <p style="color: var(--text-muted); font-size: 14px;">Parent: ${parentName}</p>
                         </div>
-                        <button class="btn btn-primary">
-                            <i class="ph ph-eye"></i>
-                            View Full
-                        </button>
                     </div>
 
                     <div class="grid-4" style="gap: 16px; margin-bottom: 24px;">
@@ -129,15 +130,82 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${allergiesHtml}
 
                     <div style="display: flex; gap: 12px;">
-                        <button class="btn btn-outline" style="background-color: white;">
+                        <button class="btn btn-outline" style="background-color: white;" onclick="window.showMedicalHistory(${child.childid})">
                             <i class="ph ph-file-text"></i> Medical History
                         </button>
-                        <button class="btn btn-outline" style="background-color: white;">Treatment Records</button>
-                        <button class="btn btn-outline" style="background-color: white;">Doctor Notes</button>
+                        <button class="btn btn-outline" style="background-color: white;" onclick="window.showTreatmentRecords(${child.childid})">
+                            Treatment Records
+                        </button>
                     </div>
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', html);
         });
+    } // end renderRecords
+}); // end DOMContentLoaded
+
+window.closeRecordsModal = function() {
+    document.getElementById('records-modal').style.display = 'none';
+};
+
+window.showMedicalHistory = function(childId) {
+    if (!window._allChildren) return;
+    const child = window._allChildren.find(c => c.childid === childId);
+    if (!child) return;
+
+    const modalTitle = document.getElementById('records-modal-title');
+    const modalBody = document.getElementById('records-modal-body');
+    
+    modalTitle.innerText = `Medical History - ${child.full_name}`;
+    
+    if (!child.MEDICAL_HISTORY || child.MEDICAL_HISTORY.length === 0) {
+        modalBody.innerHTML = '<p>No medical history found.</p>';
+    } else {
+        let html = '<ul style="padding-left: 20px;">';
+        child.MEDICAL_HISTORY.forEach(record => {
+            html += `<li style="margin-bottom: 12px;">
+                <strong>${record.condition_name || 'Unknown Condition'}</strong> 
+                <span style="color: var(--text-muted); font-size: 13px;">(${record.diagnosis_date || 'Unknown Date'})</span>
+                <br/>
+                <span style="font-size: 14px;">Notes: ${record.notes || 'N/A'}</span>
+            </li>`;
+        });
+        html += '</ul>';
+        modalBody.innerHTML = html;
     }
-});
+    
+    document.getElementById('records-modal').style.display = 'flex';
+};
+
+window.showTreatmentRecords = function(childId) {
+    if (!window._allChildren) return;
+    const child = window._allChildren.find(c => c.childid === childId);
+    if (!child) return;
+
+    const modalTitle = document.getElementById('records-modal-title');
+    const modalBody = document.getElementById('records-modal-body');
+    
+    modalTitle.innerText = `Treatment Records - ${child.full_name}`;
+    
+    if (!child.MEDICAL_HISTORY || child.MEDICAL_HISTORY.length === 0) {
+        modalBody.innerHTML = '<p>No treatment records found.</p>';
+    } else {
+        const treatments = child.MEDICAL_HISTORY.filter(r => r.treatment && r.treatment.trim() !== '');
+        if (treatments.length === 0) {
+            modalBody.innerHTML = '<p>No treatment records found.</p>';
+        } else {
+            let html = '<ul style="padding-left: 20px;">';
+            treatments.forEach(record => {
+                html += `<li style="margin-bottom: 12px;">
+                    <strong>Condition: ${record.condition_name || 'N/A'}</strong> 
+                    <br/>
+                    <span style="font-size: 14px;">Treatment: ${record.treatment}</span>
+                </li>`;
+            });
+            html += '</ul>';
+            modalBody.innerHTML = html;
+        }
+    }
+    
+    document.getElementById('records-modal').style.display = 'flex';
+};

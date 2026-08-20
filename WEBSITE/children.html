@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Child Accounts - Carelyo Admin</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <main class="main-content">
+        <header class="page-header">
+            <h2 class="page-title">Child Account Management</h2>
+            <button class="btn btn-primary" onclick="openModal()">
+                <i class="ph ph-plus"></i>
+                Add Child
+            </button>
+        </header>
+
+        <div class="card mb-6">
+            <div class="search-bar">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" id="search-input" placeholder="Search by child name or parent name...">
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Child Name</th>
+                        <th>Parent Name</th>
+                        <th>Date of Birth</th>
+                        <th>Gender</th>
+                        <th>Blood Type</th>
+                        <th>Weight</th>
+                        <th>Height</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="children-table-body">
+                    <!-- Data populated by JS -->
+                    <tr><td colspan="9" style="text-align: center;">Loading children...</td></tr>
+                </tbody>
+            </table>
+            <div style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color);">
+                <span style="font-size: 13px; color: var(--text-muted);" id="pagination-info">Showing 0 of 0 child accounts</span>
+                <div style="display: flex; gap: 8px;">
+                    <button id="prev-page-btn" class="btn btn-outline btn-sm">Previous</button>
+                    <button id="page-number-btn" class="btn btn-primary btn-sm">1</button>
+                    <button id="next-page-btn" class="btn btn-outline btn-sm">Next</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Child Modal -->
+    <div id="child-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="modal-content" style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+            <h3 id="modal-title" style="margin-top: 0; margin-bottom: 16px;">Add Child</h3>
+            <form id="child-form">
+                <input type="hidden" id="child-id">
+                
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px;">Parent Account *</label>
+                    <select id="child-parent" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                        <option value="">Select a parent...</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px;">Child Full Name *</label>
+                    <input type="text" id="child-name" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px;">Date of Birth *</label>
+                    <input type="date" id="child-dob" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <label style="display: block; margin-bottom: 4px;">Gender *</label>
+                    <select id="child-gender" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                        <option value="">Select gender...</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+
+                <div class="grid-2" style="gap: 12px; margin-bottom: 12px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 4px;">Weight</label>
+                        <input type="text" id="child-weight" placeholder="e.g. 15kg" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px;">Height</label>
+                        <input type="text" id="child-height" placeholder="e.g. 90cm" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                    </div>
+                </div>
+
+                <div class="grid-2" style="gap: 12px; margin-bottom: 16px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 4px;">Blood Type</label>
+                        <select id="child-blood" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                            <option value="">Select...</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px;">Status</label>
+                        <input type="text" id="child-status" placeholder="e.g. Active" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                    <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="save-child-btn">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Scripts -->
+    <script src="supabaseClient.js"></script>
+    <script src="app.js"></script>
+    <script src="children.js"></script>
+</body>
+</html>

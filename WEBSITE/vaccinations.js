@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .select(`
                     *,
                     USER!inner(full_name),
-                    CHILD_VACCINE (status, administered_date, VACCINATION(vaccine_name))
+                    CHILD_VACCINE (status, administered_date, VACCINATION(vaccine_name, recommended_age_weeks))
                 `)
                 .order('full_name', { ascending: true });
 
@@ -50,19 +50,56 @@ document.addEventListener('DOMContentLoaded', () => {
             // Process data to calculate statuses
             allRecords = data.map(child => {
                 const vaccines = child.CHILD_VACCINE || [];
-                const completed = vaccines.filter(v => v.status === 'Completed').length;
-                const pending = vaccines.filter(v => v.status === 'Pending').length;
-                const overdue = vaccines.filter(v => v.status === 'Overdue').length;
+                const completed = vaccines.filter(v => (v.status || '').trim().toLowerCase() === 'completed').length;
+                const pendingList = vaccines.filter(v => (v.status || '').trim().toLowerCase() === 'pending');
+                const overdueList = vaccines.filter(v => (v.status || '').trim().toLowerCase() === 'overdue');
+                
+                const pending = pendingList.length;
+                const overdue = overdueList.length;
                 
                 // Determine overall status
-                let overallStatus = 'Complete';
-                if (overdue > 0) overallStatus = 'Overdue';
-                else if (pending > 0 || completed < totalVaccines) overallStatus = 'Pending';
+                let overallStatus = 'Pending';
+                if (overdue > 0) {
+                    overallStatus = 'Overdue';
+                } else if (pending > 0) {
+                    overallStatus = 'Pending';
+                } else if (completed >= totalVaccines) {
+                    overallStatus = 'Complete';
+                } else if (completed > 0) {
+                    overallStatus = 'Complete';
+                }
                 
-                // Mock next due string
                 let nextDueStr = 'All vaccines completed';
-                if (overallStatus === 'Overdue') nextDueStr = 'DTP Booster - Overdue since 2026-03-20';
-                else if (overallStatus === 'Pending') nextDueStr = 'MMR - Due: 2026-05-15';
+                
+                if (overallStatus === 'Overdue' && overdueList.length > 0) {
+                    // Find the most overdue (earliest recommended age)
+                    overdueList.sort((a, b) => (a.VACCINATION?.recommended_age_weeks || 0) - (b.VACCINATION?.recommended_age_weeks || 0));
+                    const v = overdueList[0];
+                    const vName = v.VACCINATION?.vaccine_name || 'Vaccine';
+                    
+                    if (child.date_of_birth && v.VACCINATION?.recommended_age_weeks !== undefined) {
+                        const dueDate = new Date(child.date_of_birth);
+                        dueDate.setDate(dueDate.getDate() + (v.VACCINATION.recommended_age_weeks * 7));
+                        nextDueStr = `${vName} - Overdue since ${dueDate.toISOString().split('T')[0]}`;
+                    } else {
+                        nextDueStr = `${vName} - Overdue`;
+                    }
+                } else if (overallStatus === 'Pending' && pendingList.length > 0) {
+                    // Find next pending
+                    pendingList.sort((a, b) => (a.VACCINATION?.recommended_age_weeks || 0) - (b.VACCINATION?.recommended_age_weeks || 0));
+                    const v = pendingList[0];
+                    const vName = v.VACCINATION?.vaccine_name || 'Vaccine';
+                    
+                    if (child.date_of_birth && v.VACCINATION?.recommended_age_weeks !== undefined) {
+                        const dueDate = new Date(child.date_of_birth);
+                        dueDate.setDate(dueDate.getDate() + (v.VACCINATION.recommended_age_weeks * 7));
+                        nextDueStr = `${vName} - Due: ${dueDate.toISOString().split('T')[0]}`;
+                    } else {
+                        nextDueStr = `${vName} - Pending`;
+                    }
+                } else if (overallStatus === 'Pending') {
+                     nextDueStr = 'Waiting for records';
+                }
 
                 return {
                     ...child,
@@ -185,7 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div style="display: flex; gap: 12px;">
-                        <button class="btn btn-outline" style="${btnStyle}">View Schedule</button>
                         <button class="btn btn-outline" style="${btnStyle}">Send Reminder</button>
                         <button class="btn btn-outline" style="${btnStyle}">Update Status</button>
                     </div>

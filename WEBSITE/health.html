@@ -32,6 +32,22 @@
         </div>
     </main>
 
+    <!-- Records Modal -->
+    <div id="records-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="modal-content" style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h3 id="records-modal-title" style="margin: 0;">Records</h3>
+                <button onclick="closeRecordsModal()" style="background: none; border: none; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="records-modal-body">
+                <!-- Content goes here -->
+            </div>
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+                <button type="button" class="btn btn-outline" onclick="closeRecordsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- App Scripts -->
     <script src="supabaseClient.js"></script>
     <script src="app.js"></script>

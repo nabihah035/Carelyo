@@ -294,6 +294,16 @@ button {
   color: var(--danger-color);
 }
 
+.badge-purple {
+  background-color: #f3e8ff;
+  color: #9333ea;
+}
+
+.badge-primary {
+  background-color: var(--primary-light);
+  color: var(--primary-color);
+}
+
 /* Tables */
 .table-container {
   background-color: var(--bg-card);
