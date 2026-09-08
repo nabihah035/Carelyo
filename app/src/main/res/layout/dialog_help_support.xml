@@ -56,7 +56,7 @@
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:maxHeight="500dp">
+            android:maxHeight="400dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -90,39 +90,6 @@
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
                             android:text="Go to Profile → My Children → tap &quot;+ Add&quot; to add a new child."
-                            android:textColor="#475569"
-                            android:textSize="13sp"
-                            android:lineSpacingMultiplier="1.2" />
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    app:cardBackgroundColor="#F8FAFC"
-                    app:cardCornerRadius="16dp"
-                    app:strokeWidth="0dp">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="How does AI Summary work?"
-                            android:textColor="#0F172A"
-                            android:textSize="15sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="6dp"
-                            android:text="Record or type doctor notes, then tap &quot;Generate AI Summary&quot; to get a simplified explanation."
                             android:textColor="#475569"
                             android:textSize="13sp"
                             android:lineSpacingMultiplier="1.2" />
@@ -197,5 +164,70 @@
 
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginVertical="16dp"
+            android:background="#E2E8F0" />
+
+        <!-- Email Contact Section -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardEmailContact"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            app:cardBackgroundColor="#F0F7FF"
+            app:cardCornerRadius="12dp"
+            app:strokeWidth="0dp"
+            app:rippleColor="#1A2563EB">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_email"
+                    app:tint="#2563EB"
+                    android:layout_marginEnd="12dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Contact Support"
+                        android:textColor="#0F172A"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="carelyohealth@gmail.com"
+                        android:textColor="#2563EB"
+                        android:textSize="13sp" />
+                </LinearLayout>
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="#94A3B8" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

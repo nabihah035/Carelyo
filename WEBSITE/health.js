@@ -26,16 +26,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 .from('CHILD')
                 .select(`
                     *,
-                    USER!inner(full_name, clinicid),
-                    ALLERGIE (allergy_name),
+                    USER!inner(full_name),
+                    ALLERGIES (allergy_name),
                     MEDICAL_HISTORY (*),
                     DOCTOR_VISIT (*)
                 `)
                 .order('full_name', { ascending: true });
-
-            if (clinicId) {
-                query = query.eq('USER.clinicid', clinicId);
-            }
 
             const { data, error } = await query;
 
@@ -95,8 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             let allergiesHtml = '';
-            if (child.ALLERGIE && child.ALLERGIE.length > 0) {
-                const allergyBadges = child.ALLERGIE.map(a => `<span style="background-color: white; color: var(--danger-color); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500;">${a.allergy_name}</span>`).join('');
+            if (child.ALLERGIES && child.ALLERGIES.length > 0) {
+                const allergyBadges = child.ALLERGIES.map(a => `<span style="background-color: white; color: var(--danger-color); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 500;">${a.allergy_name}</span>`).join('');
                 allergiesHtml = `
                     <div style="background-color: var(--danger-bg); border: 1px solid var(--danger-light); padding: 16px; border-radius: 8px; margin-bottom: 24px;">
                         <div style="color: var(--danger-color); font-weight: 500; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">

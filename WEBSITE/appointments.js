@@ -75,10 +75,6 @@ async function loadParentsForDropdown() {
             `)
             .ilike('role', 'parent')
             .order('full_name', { ascending: true });
-            
-        if (clinicId) {
-            query = query.eq('clinicid', clinicId);
-        }
 
         const { data, error } = await query;
             

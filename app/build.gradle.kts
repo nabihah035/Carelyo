@@ -17,7 +17,8 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val geminiKey = localProperties.getProperty("GEMINI_API_KEY") ?: "\"\""
+val supabaseUrl = localProperties.getProperty("SUPABASE_URL") ?: ""
+val supabaseKey = localProperties.getProperty("SUPABASE_KEY") ?: ""
 
 android {
     namespace = "com.example.carelyo"
@@ -32,13 +33,14 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // INJECT THE KEY - Make sure this is correct
-        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiKey\"")
+        // INJECT SUPABASE SECRETS INTO BUILDCONFIG
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_KEY", "\"$supabaseKey\"")
     }
 
     buildFeatures {
         viewBinding = true
-        buildConfig = true // This must be true
+        buildConfig = true // Must be true to generate BuildConfig fields
     }
 
     buildTypes {
@@ -74,9 +76,6 @@ dependencies {
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.cardview)
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-
-    // GEMINI SDK (KMP version for Ktor 3 compatibility)
-    implementation("dev.shreyaspatil.generativeai:generativeai-google:0.9.0-1.1.0")
 
     // FIREBASE
     implementation(libs.firebase.messaging)

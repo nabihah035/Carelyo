@@ -35,10 +35,33 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const allowedRoles = ['admin', 'nurse', 'doctor', 'staff'];
         const userRole = userData.role ? userData.role.toLowerCase() : '';
 
-        if (allowedRoles.includes(userRole) && userRole !== 'parent') {
+        if (userRole === 'staff') {
+            // Fetch clinicid and clinic details from CLINIC_STAFF and CLINIC
+            const { data: staffData } = await window.supabaseClient
+                .from('CLINIC_STAFF')
+                .select(`
+                    clinicid,
+                    CLINIC (
+                        clinicid,
+                        clinic_name,
+                        address,
+                        phone_number,
+                        email
+                    )
+                `)
+                .eq('userid', userData.userid)
+                .single();
+                
+            if (staffData && staffData.clinicid) {
+                userData.clinicid = staffData.clinicid;
+                if (staffData.CLINIC) {
+                    userData.clinic = staffData.CLINIC;
+                    userData.clinic_name = staffData.CLINIC.clinic_name;
+                }
+            }
+
             // Successfully logged in and authorized
             localStorage.setItem('carelyo_admin_session', JSON.stringify(userData));
             window.location.href = 'index.html';

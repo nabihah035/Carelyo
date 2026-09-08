@@ -1,6 +1,7 @@
 package com.example.carelyo.ui.summary
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
@@ -48,64 +49,18 @@ class DoctorSummaryAdapter(
                 }
             } ?: "No date"
 
-            // Show AI summary preview
-            val summaryPreview = visit.ai_summary?.take(100) ?: "No summary available"
-            binding.tvAiSummaryText.text = summaryPreview
+            // Display notes preview directly
+            val previewText = visit.raw_notes?.take(100) ?: "No notes available"
+            binding.tvAiSummaryText.text = previewText
 
-            // Parse and show key points
-            val keyPoints = parseKeyPoints(visit.ai_summary ?: "")
-            val llKeyPoints = binding.llKeyPointsContainer
-            llKeyPoints.removeAllViews()
+            // Clear extra key points containers if not needed
+            binding.llKeyPointsContainer.removeAllViews()
+            binding.tvMorePointsLink.visibility = View.GONE
 
-            // Show up to 3 key points
-            val pointsToShow = keyPoints.take(3)
-            pointsToShow.forEach { point ->
-                val pointView = LayoutInflater.from(binding.root.context)
-                    .inflate(R.layout.item_key_point, llKeyPoints, false)
-                val tvPoint = pointView.findViewById<android.widget.TextView>(R.id.tvKeyPoint)
-                tvPoint.text = point
-                llKeyPoints.addView(pointView)
-            }
-
-            // Show "more points" if there are more than 3
-            binding.tvMorePointsLink.visibility = if (keyPoints.size > 3) {
-                binding.tvMorePointsLink.text = "+${keyPoints.size - 3} more points"
-                android.view.View.VISIBLE
-            } else {
-                android.view.View.GONE
-            }
-
-            // Set clinic name icon
             binding.ivDocIcon.setImageResource(R.drawable.ic_doctor_visit)
 
             binding.root.setOnClickListener {
                 onItemClick(visit)
-            }
-        }
-
-        private fun parseKeyPoints(summary: String): List<String> {
-            val lines = summary.split("\n")
-            val keyPoints = mutableListOf<String>()
-
-            for (line in lines) {
-                val trimmed = line.trim()
-                when {
-                    trimmed.startsWith("•") -> keyPoints.add(trimmed.drop(1).trim())
-                    trimmed.startsWith("-") -> keyPoints.add(trimmed.drop(1).trim())
-                    trimmed.matches(Regex("^\\d+\\..*")) -> keyPoints.add(trimmed.substringAfter(".").trim())
-                    trimmed.matches(Regex("^\\d+\\) .*")) -> keyPoints.add(trimmed.substringAfter(")").trim())
-                    trimmed.startsWith("Gejala") || trimmed.startsWith("Diagnosis") ||
-                            trimmed.startsWith("Ubat") || trimmed.startsWith("Nasihat") -> {
-                        val content = trimmed.substringAfter(":").trim()
-                        if (content.isNotEmpty()) keyPoints.add(content)
-                    }
-                }
-            }
-
-            return if (keyPoints.isEmpty()) {
-                summary.split(".").map { it.trim() }.filter { it.length > 10 }
-            } else {
-                keyPoints
             }
         }
     }

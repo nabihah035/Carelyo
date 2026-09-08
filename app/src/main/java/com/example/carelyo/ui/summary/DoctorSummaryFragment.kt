@@ -238,7 +238,7 @@ class DoctorSummaryFragment : Fragment() {
                 transcribedText
             }
 
-            viewModel.generateSummaryFromNotes(selectedChildId, doctorName, clinicName, finalNotes)
+            viewModel.saveConsultationNotes(selectedChildId, doctorName, clinicName, finalNotes)
             dialog.dismiss()
         }
 
@@ -304,7 +304,7 @@ class DoctorSummaryFragment : Fragment() {
                 rawNotes
             }
 
-            viewModel.generateSummaryFromNotes(selectedChildId, doctorName, clinicName, finalNotes)
+            viewModel.saveConsultationNotes(selectedChildId, doctorName, clinicName, finalNotes)
             dialog.dismiss()
         }
 

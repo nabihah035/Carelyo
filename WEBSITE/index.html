@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Carelyo Admin</title>
+    <title>Dashboard - Carelyo Staff</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -14,54 +14,84 @@
 </head>
 <body>
     <main class="main-content">
-        <header class="page-header">
-            <h2 class="page-title">Dashboard Overview - <span id="clinic-name-display"></span></h2>
+        <!-- Overview Header -->
+        <header class="overview-header">
+            <div class="overview-title-box">
+                <h2 class="overview-title">Overview</h2>
+                <p class="overview-date" id="overview-date">Loading date...</p>
+            </div>
+            <div class="header-user-badge">
+                <span class="header-user-name" id="header-user-name">Staff Member</span>
+                <div class="user-avatar-circle" id="header-user-avatar">NA</div>
+            </div>
         </header>
 
+        <!-- 4 Metric Cards -->
         <section class="grid-4">
-            <div class="card stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon primary">
-                        <i class="ph ph-users"></i>
-                    </div>
-                    <span class="stat-title">Total Parents</span>
+            <div class="dashboard-stat-card">
+                <div class="stat-number" id="stat-appointments-today">-</div>
+                <div>
+                    <div class="stat-label">Today's Appointments</div>
+                    <div class="stat-subtext">scheduled for today</div>
                 </div>
-                <div class="stat-value" id="stat-parents">...</div>
             </div>
             
-            <div class="card stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon success">
-                        <i class="ph ph-heart"></i>
-                    </div>
-                    <span class="stat-title">Children Registered</span>
+            <div class="dashboard-stat-card">
+                <div class="stat-number" id="stat-registered-children">-</div>
+                <div>
+                    <div class="stat-label">Registered Children</div>
+                    <div class="stat-subtext">at this clinic</div>
                 </div>
-                <div class="stat-value" id="stat-children">...</div>
             </div>
             
-            <div class="card stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon warning">
-                        <i class="ph ph-calendar-blank"></i>
-                    </div>
-                    <span class="stat-title">Appointments Today</span>
+            <div class="dashboard-stat-card">
+                <div class="stat-number danger" id="stat-overdue-vaccines">-</div>
+                <div>
+                    <div class="stat-label">Overdue Vaccinations</div>
+                    <div class="stat-subtext">require follow-up</div>
                 </div>
-                <div class="stat-value" id="stat-appointments">...</div>
             </div>
             
-            <div class="card stat-card">
-                <div class="stat-header">
-                    <div class="stat-icon danger">
-                        <i class="ph ph-warning-circle"></i>
-                    </div>
-                    <span class="stat-title">Overdue Vaccinations</span>
+            <div class="dashboard-stat-card">
+                <div class="stat-number danger" id="stat-pending-reminders">-</div>
+                <div>
+                    <div class="stat-label">Pending Reminders</div>
+                    <div class="stat-subtext">awaiting dispatch</div>
                 </div>
-                <div class="stat-value" id="stat-overdue">...</div>
             </div>
         </section>
+
+        <!-- Attention Required Banner -->
+        <div class="attention-card" onclick="window.location.href='vaccinations.html'" id="attention-card">
+            <div>
+                <div class="attention-label">Attention Required</div>
+                <div class="attention-message" id="attention-text">
+                    <span>•</span>
+                    <span id="attention-details">Loading overdue notices...</span>
+                </div>
+            </div>
+            <i class="ph ph-arrow-right attention-arrow"></i>
+        </div>
+
+        <!-- Today's Schedule -->
+        <div class="schedule-card">
+            <div class="schedule-card-header">
+                <h3 class="schedule-card-title">Today's Schedule</h3>
+                <a href="appointments.html" class="schedule-view-all">
+                    <span>View all</span>
+                    <i class="ph ph-arrow-right"></i>
+                </a>
+            </div>
+            <div class="schedule-list" id="today-schedule-list">
+                <div style="padding: 24px; text-align: center; color: #64748b; font-size: 14px;">
+                    Loading today's schedule...
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- App Scripts -->
+    <script src="env.js"></script>
     <script src="supabaseClient.js"></script>
     <script src="app.js"></script>
     <script src="dashboard.js"></script>

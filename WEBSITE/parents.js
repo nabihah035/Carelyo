@@ -41,10 +41,6 @@ async function loadParents(searchQuery = '') {
             .from('USER')
             .select('*, CHILD(count)', { count: 'exact' })
             .ilike('role', 'parent');
-            
-        if (clinicId) {
-            query = query.eq('clinicid', clinicId);
-        }
 
         if (searchQuery) {
             query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
@@ -180,10 +176,6 @@ async function saveParent(e) {
         phone_number: phone,
         role: 'parent'
     };
-
-    if (clinicId) {
-        payload.clinicid = clinicId;
-    }
 
     if (password) {
         payload.password = password; 

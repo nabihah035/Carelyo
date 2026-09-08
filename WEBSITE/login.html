@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Carelyo Admin</title>
+    <title>Login - Carelyo Staff</title>
     <link rel="stylesheet" href="styles.css">
     <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -58,12 +58,22 @@
         .form-group input:focus {
             outline: none;
             border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-light);
         }
         .btn-login {
             width: 100%;
             padding: 12px;
-            font-size: 16px;
+            font-size: 15px;
+            font-weight: 600;
             margin-top: 10px;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border-radius: 8px;
+            border: none;
+            transition: var(--transition);
+        }
+        .btn-login:hover {
+            background-color: var(--primary-hover);
         }
         .error-message {
             color: var(--danger-color);
@@ -76,13 +86,18 @@
 <body>
     <div class="login-container">
         <div class="login-card">
-            <h1 class="login-brand">Carelyo</h1>
-            <p class="login-subtitle">Admin Dashboard Login</p>
+            <div style="display: flex; justify-content: center; margin-bottom: 16px;">
+                <div class="brand-logo-icon" style="width: 44px; height: 44px; border-radius: 10px; font-size: 24px;">
+                    <i class="ph ph-activity"></i>
+                </div>
+            </div>
+            <h1 class="login-brand" style="color: #111827; font-size: 26px;">Carelyo</h1>
+            <p class="login-subtitle">Staff Dashboard Login</p>
             
             <form id="login-form">
                 <div class="form-group">
                     <label for="email">Email Address</label>
-                    <input type="email" id="email" required placeholder="admin@carelyo.com">
+                    <input type="email" id="email" required placeholder="staff@carelyo.com">
                 </div>
                 
                 <div class="form-group">
@@ -97,6 +112,7 @@
     </div>
 
     <!-- App Scripts -->
+    <script src="env.js"></script>
     <script src="supabaseClient.js"></script>
     <script src="login.js"></script>
 </body>

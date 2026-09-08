@@ -6,7 +6,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object NetworkClient {
-    private const val BASE_URL = "http://10.192.158.131:11434/"
+    private const val BASE_URL = "http://10.157.25.131:11434/"
 
     // 1. Create a custom OkHttpClient with expanded timeout limits
     private val okHttpClient: OkHttpClient by lazy {

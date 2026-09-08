@@ -3,13 +3,11 @@ package com.example.carelyo.ui.summary
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.carelyo.BuildConfig
 import com.example.carelyo.api.supabase.SupabaseClient
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.entity.DoctorVisit
 import com.example.carelyo.data.entity.DoctorVisitInsert
 import com.example.carelyo.data.session.SessionManager
-import dev.shreyaspatil.ai.client.generativeai.GenerativeModel
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,22 +43,6 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage
 
-    // Initialize Gemini Model
-    private val generativeModel by lazy {
-        try {
-            GenerativeModel(
-                modelName = "gemini-1.5-flash",
-                apiKey = BuildConfig.GEMINI_API_KEY
-            )
-        } catch (e: Exception) {
-            // Fallback for development - remove in production
-            GenerativeModel(
-                modelName = "gemini-1.5-flash",
-                apiKey = "YOUR_API_KEY_HERE"
-            )
-        }
-    }
-
     init {
         loadChildren()
     }
@@ -77,8 +59,6 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
 
         viewModelScope.launch {
             try {
-                println("[DoctorSummaryVM]: Fetching children for Parent_ID: ${currentUser.UserID}")
-
                 val children = SupabaseClient.client.postgrest["CHILD"]
                     .select {
                         filter {
@@ -86,17 +66,13 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
                         }
                     }.decodeList<Child>()
 
-                println("[DoctorSummaryVM]: Found ${children.size} children")
                 _childrenList.value = children
                 _isLoading.value = false
 
                 if (children.isNotEmpty()) {
-                    // Load doctor visits for all children
                     loadDoctorVisitsForChildren(children.map { it.ChildID })
                 }
             } catch (e: Exception) {
-                println("[DoctorSummaryVM]: Error loading children: ${e.localizedMessage}")
-                e.printStackTrace()
                 _isLoading.value = false
                 _errorMessage.value = "Failed to load children: ${e.localizedMessage}"
             }
@@ -115,8 +91,6 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
     private fun loadDoctorVisitsForChildren(childIds: List<Int>) {
         viewModelScope.launch {
             try {
-                println("[DoctorSummaryVM]: Fetching doctor visits for children: $childIds")
-
                 val allVisits = mutableListOf<DoctorVisit>()
 
                 for (childId in childIds) {
@@ -129,31 +103,22 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
                             }
                             .decodeList<DoctorVisit>()
 
-                        // Sort manually by visit_date descending
-                        val sortedVisits = visits.sortedByDescending { it.visit_date }
-                        allVisits.addAll(sortedVisits)
-
-                        println("[DoctorSummaryVM]: Found ${visits.size} visits for child $childId")
+                        allVisits.addAll(visits)
                     } catch (e: Exception) {
-                        println("[DoctorSummaryVM]: Error fetching visits for child $childId: ${e.localizedMessage}")
-                        // Continue with other children
+                        // Skip if one fails
                     }
                 }
 
-                // Sort all visits by date descending
                 allVisits.sortByDescending { it.visit_date }
-
-                println("[DoctorSummaryVM]: Found ${allVisits.size} total doctor visits")
                 _doctorVisits.value = allVisits
             } catch (e: Exception) {
-                println("[DoctorSummaryVM]: Error loading doctor visits: ${e.localizedMessage}")
-                e.printStackTrace()
                 _errorMessage.value = "Failed to load doctor visits: ${e.localizedMessage}"
             }
         }
     }
 
-    fun generateSummaryFromNotes(
+    // Direct save without Gemini API calls
+    fun saveConsultationNotes(
         childId: Int,
         doctorName: String,
         clinicName: String,
@@ -163,86 +128,26 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
 
         viewModelScope.launch {
             try {
-                val prompt = """
-                    You are an expert pediatric healthcare assistant. 
-                    Review the following consultation notes, which were generated via a speech-to-text tool and may contain minor phonetic spelling errors or typos of medical terms.
-
-                    1. Clean up and correct any misheard medical terminology.
-                    2. Generate a clear, parent-friendly summary.
-                    3. Format the output into a clear structure.
-
-                    Extract the following details precisely:
-                    • Gejala Anak (Child Symptoms)
-                    • Diagnosis
-                    • Ubat-Ubatan (Medication Prescribed with dosages if mentioned)
-                    • Nasihat Susulan (Follow-up Advice)
-
-                    Raw Consultation Notes:
-                    $rawNotes
-                """.trimIndent()
-
-                val response = generativeModel.generateContent(prompt)
-                val responseText = response.text
-
-                if (!responseText.isNullOrEmpty()) {
-                    // Save to database
-                    saveDoctorVisit(
-                        childId = childId,
-                        doctorName = doctorName,
-                        clinicName = clinicName,
-                        rawNotes = rawNotes,
-                        aiSummary = responseText,
-                        summaryLanguage = "ms-MY"
-                    )
-                    _summaryState.value = UiState.Success(responseText)
-                } else {
-                    _summaryState.value = UiState.Error("Gemini returned an empty response.")
-                }
-            } catch (e: Exception) {
-                _summaryState.value = UiState.Error("AI Error: ${e.localizedMessage}")
-            }
-        }
-    }
-
-    private fun saveDoctorVisit(
-        childId: Int,
-        doctorName: String,
-        clinicName: String,
-        rawNotes: String,
-        aiSummary: String,
-        summaryLanguage: String
-    ) {
-        viewModelScope.launch {
-            try {
                 val currentDate = dateFormat.format(Date())
 
-                // Create the doctor visit object
                 val newVisit = DoctorVisitInsert(
                     ChildID = childId,
                     visit_date = currentDate,
                     clinic_name = clinicName,
                     doctor_name = doctorName,
                     raw_notes = rawNotes,
-                    ai_summary = aiSummary,
-                    summary_language = summaryLanguage
+                    ai_summary = rawNotes, // Storing raw notes directly into summary field
+                    summary_language = "ms-MY"
                 )
 
-                println("[DoctorSummaryVM]: Saving doctor visit to Supabase")
-                println("[DoctorSummaryVM]: ChildID: $childId, Doctor: $doctorName")
-
-                // Insert into Supabase
                 val result = SupabaseClient.client.postgrest["DOCTOR_VISIT"]
                     .insert(newVisit) { select() }
                     .decodeSingle<DoctorVisit>()
 
-                println("[DoctorSummaryVM]: Doctor visit saved successfully with ID: ${result.DocVisitID}")
-
-                // Refresh the list
                 loadDoctorVisits()
+                _summaryState.value = UiState.Success("Saved successfully")
             } catch (e: Exception) {
-                println("[DoctorSummaryVM]: Error saving doctor visit: ${e.localizedMessage}")
-                e.printStackTrace()
-                _errorMessage.value = "Failed to save doctor visit: ${e.localizedMessage}"
+                _summaryState.value = UiState.Error("Error: ${e.localizedMessage}")
             }
         }
     }

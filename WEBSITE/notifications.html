@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notifications - Carelyo Staff</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <main class="main-content">
+        <header class="page-header">
+            <h2 class="page-title">Notifications</h2>
+        </header>
+
+        <div class="card mb-6">
+            <div class="search-bar">
+                <i class="ph ph-magnifying-glass"></i>
+                <input type="text" id="search-input" placeholder="Search notifications by title or message...">
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Message</th>
+                        <th>Type</th>
+                        <th>Recipient</th>
+                        <th>Date</th>
+                        <th>Read Status</th>
+                    </tr>
+                </thead>
+                <tbody id="notifications-table-body">
+                    <tr><td colspan="6" style="text-align: center;">Loading notifications...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- App Scripts -->
+    <script src="env.js"></script>
+    <script src="supabaseClient.js"></script>
+    <script src="app.js"></script>
+    <script src="notifications.js"></script>
+</body>
+</html>

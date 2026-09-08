@@ -41,14 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 .from('CHILD')
                 .select(`
                     *,
-                    USER!inner(full_name, clinicid),
+                    USER!inner(full_name),
                     CHILD_VACCINE (status, administered_date, VACCINATION(vaccine_name, recommended_age_weeks))
                 `)
                 .order('full_name', { ascending: true });
-
-            if (clinicId) {
-                query = query.eq('USER.clinicid', clinicId);
-            }
 
             const { data, error } = await query;
 
