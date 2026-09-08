@@ -22,8 +22,13 @@ let parentsData = []; // Store parents and their children
 
 async function loadAppointments() {
     const container = document.getElementById('appointments-container');
+
+    const sessionData = localStorage.getItem('carelyo_admin_session');
+    const userSession = sessionData ? JSON.parse(sessionData) : {};
+    const clinicId = userSession.clinicid;
+
     try {
-        const { data, error } = await window.supabaseClient
+        let query = window.supabaseClient
             .from('APPOINTMENT')
             .select(`
                 *,
@@ -32,6 +37,12 @@ async function loadAppointments() {
             `)
             .order('appointment_date', { ascending: false })
             .order('appointment_time', { ascending: false });
+
+        if (clinicId) {
+            query = query.eq('clinicid', clinicId);
+        }
+
+        const { data, error } = await query;
 
         if (error) {
             console.error("Error fetching appointments:", error);
@@ -50,9 +61,13 @@ async function loadAppointments() {
 }
 
 async function loadParentsForDropdown() {
+    const sessionData = localStorage.getItem('carelyo_admin_session');
+    const userSession = sessionData ? JSON.parse(sessionData) : {};
+    const clinicId = userSession.clinicid;
+
     try {
         // Fetch parents and their children
-        const { data, error } = await window.supabaseClient
+        let query = window.supabaseClient
             .from('USER')
             .select(`
                 userid, full_name,
@@ -60,6 +75,12 @@ async function loadParentsForDropdown() {
             `)
             .ilike('role', 'parent')
             .order('full_name', { ascending: true });
+            
+        if (clinicId) {
+            query = query.eq('clinicid', clinicId);
+        }
+
+        const { data, error } = await query;
             
         if (error) throw error;
         parentsData = data || [];
@@ -263,6 +284,10 @@ async function saveAppointment(e) {
     const parentId = document.getElementById('appt-parent').value;
     const childId = document.getElementById('appt-child').value;
     
+    const sessionData = localStorage.getItem('carelyo_admin_session');
+    const userSession = sessionData ? JSON.parse(sessionData) : {};
+    const clinicId = userSession.clinicid;
+
     const payload = {
         parentid: parentId,
         childid: childId,
@@ -274,6 +299,10 @@ async function saveAppointment(e) {
         status: document.getElementById('appt-status').value,
         notes: document.getElementById('appt-notes').value
     };
+
+    if (clinicId) {
+        payload.clinicid = clinicId;
+    }
 
     try {
         if (id) {

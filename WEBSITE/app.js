@@ -11,12 +11,12 @@ async function checkAuth() {
     }
 
     const session = JSON.parse(sessionStr);
-    const allowedRoles = ['admin', 'nurse', 'doctor'];
+    const allowedRoles = ['admin', 'nurse', 'doctor', 'staff'];
     const userRole = session.role ? session.role.toLowerCase() : '';
 
-    if (!allowedRoles.includes(userRole)) {
+    if (!allowedRoles.includes(userRole) || userRole === 'parent') {
         localStorage.removeItem('carelyo_admin_session');
-        alert('Access denied. Only admin, nurse, and doctor roles are allowed.');
+        alert('Access denied. Only staff are allowed. Parents are not authorized.');
         window.location.href = 'login.html';
     }
 }
@@ -36,10 +36,6 @@ function renderSidebar() {
             <a href="parents.html" class="nav-item" id="nav-parents">
                 <i class="ph ph-users"></i>
                 Parent Accounts
-            </a>
-            <a href="children.html" class="nav-item" id="nav-children">
-                <i class="ph ph-baby"></i>
-                Child Accounts
             </a>
             <a href="appointments.html" class="nav-item" id="nav-appointments">
                 <i class="ph ph-calendar-blank"></i>

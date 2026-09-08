@@ -35,16 +35,16 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const allowedRoles = ['admin', 'nurse', 'doctor'];
+        const allowedRoles = ['admin', 'nurse', 'doctor', 'staff'];
         const userRole = userData.role ? userData.role.toLowerCase() : '';
 
-        if (allowedRoles.includes(userRole)) {
+        if (allowedRoles.includes(userRole) && userRole !== 'parent') {
             // Successfully logged in and authorized
             localStorage.setItem('carelyo_admin_session', JSON.stringify(userData));
             window.location.href = 'index.html';
         } else {
             // Unauthorized role
-            errorMsg.innerText = 'Access denied. Only admin, nurse, and doctor roles are allowed.';
+            errorMsg.innerText = 'Access denied. Only staff are allowed. Parents are not authorized.';
             errorMsg.style.display = 'block';
             loginBtn.disabled = false;
             loginBtn.innerText = 'Log In';

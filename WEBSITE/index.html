@@ -15,7 +15,7 @@
 <body>
     <main class="main-content">
         <header class="page-header">
-            <h2 class="page-title">Dashboard Overview</h2>
+            <h2 class="page-title">Dashboard Overview - <span id="clinic-name-display"></span></h2>
         </header>
 
         <section class="grid-4">
@@ -57,32 +57,6 @@
                     <span class="stat-title">Overdue Vaccinations</span>
                 </div>
                 <div class="stat-value" id="stat-overdue">...</div>
-            </div>
-        </section>
-
-        <section class="grid-2">
-            <div class="card">
-                <h3 class="mb-4">Vaccination Completion Trend</h3>
-                <div style="position: relative; height: 250px; width: 100%;">
-                    <canvas id="vaccinationChart"></canvas>
-                </div>
-            </div>
-            
-            <div class="card">
-                <h3 class="mb-4">Parent Registration Growth</h3>
-                <div style="position: relative; height: 250px; width: 100%;">
-                    <canvas id="registrationChart"></canvas>
-                </div>
-            </div>
-        </section>
-
-        <section class="mt-4">
-            <div class="card">
-                <h3 class="mb-4">Recent Activities</h3>
-                <div id="recent-activities-list">
-                    <!-- Activities will be populated here by JS -->
-                    <p style="color: var(--text-muted);">Loading activities...</p>
-                </div>
             </div>
         </section>
     </main>

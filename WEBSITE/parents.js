@@ -31,11 +31,20 @@ async function loadParents(searchQuery = '') {
     const tableBody = document.getElementById('parents-table-body');
     const infoSpan = document.getElementById('pagination-info');
 
+    // Get session clinicId
+    const sessionData = localStorage.getItem('carelyo_admin_session');
+    const userSession = sessionData ? JSON.parse(sessionData) : {};
+    const clinicId = userSession.clinicid;
+
     try {
         let query = window.supabaseClient
             .from('USER')
             .select('*, CHILD(count)', { count: 'exact' })
             .ilike('role', 'parent');
+            
+        if (clinicId) {
+            query = query.eq('clinicid', clinicId);
+        }
 
         if (searchQuery) {
             query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
@@ -161,12 +170,20 @@ async function saveParent(e) {
     const phone = document.getElementById('parent-phone').value;
     const password = document.getElementById('parent-password').value;
 
+    const sessionData = localStorage.getItem('carelyo_admin_session');
+    const userSession = sessionData ? JSON.parse(sessionData) : {};
+    const clinicId = userSession.clinicid;
+
     const payload = {
         full_name: fullName,
         email: email,
         phone_number: phone,
         role: 'parent'
     };
+
+    if (clinicId) {
+        payload.clinicid = clinicId;
+    }
 
     if (password) {
         payload.password = password; 

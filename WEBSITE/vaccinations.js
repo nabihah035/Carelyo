@@ -19,8 +19,13 @@ document.addEventListener('DOMContentLoaded', () => {
         renderVaccinations(allRecords, activeTab, e.target.value);
     });
 
-    async function loadVaccinationData() {
+        async function loadVaccinationData() {
         const container = document.getElementById('vaccination-records-container');
+
+        const sessionData = localStorage.getItem('carelyo_admin_session');
+        const userSession = sessionData ? JSON.parse(sessionData) : {};
+        const clinicId = userSession.clinicid;
+
         try {
             // Get total required vaccines count
             const { count, error: vacError } = await window.supabaseClient
@@ -32,14 +37,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Fetch children with vaccination records
-            const { data, error } = await window.supabaseClient
+            let query = window.supabaseClient
                 .from('CHILD')
                 .select(`
                     *,
-                    USER!inner(full_name),
+                    USER!inner(full_name, clinicid),
                     CHILD_VACCINE (status, administered_date, VACCINATION(vaccine_name, recommended_age_weeks))
                 `)
                 .order('full_name', { ascending: true });
+
+            if (clinicId) {
+                query = query.eq('USER.clinicid', clinicId);
+            }
+
+            const { data, error } = await query;
 
             if (error) {
                 console.error("Error fetching vaccination records:", error);

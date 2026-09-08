@@ -15,18 +15,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadHealthRecords() {
         const container = document.getElementById('health-records-container');
+
+        const sessionData = localStorage.getItem('carelyo_admin_session');
+        const userSession = sessionData ? JSON.parse(sessionData) : {};
+        const clinicId = userSession.clinicid;
+
         try {
             // Fetch children with their parent, allergies, and medical history
-            const { data, error } = await window.supabaseClient
+            let query = window.supabaseClient
                 .from('CHILD')
                 .select(`
                     *,
-                    USER!inner(full_name),
+                    USER!inner(full_name, clinicid),
                     ALLERGIE (allergy_name),
                     MEDICAL_HISTORY (*),
                     DOCTOR_VISIT (*)
                 `)
                 .order('full_name', { ascending: true });
+
+            if (clinicId) {
+                query = query.eq('USER.clinicid', clinicId);
+            }
+
+            const { data, error } = await query;
 
             if (error) {
                 console.error("Error fetching health records:", error);
