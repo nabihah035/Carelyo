@@ -365,17 +365,30 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                         .select { filter { eq("medid", med.MedID) } }
                         .decodeList<MedicationSchedule>()
 
-                    println("[$TAG]: Found ${schedules.size} schedules for medication ${med.medication_name}")
-
-                    schedules.forEach { schedule ->
-                        val upcomingMed = UpcomingMedication(
-                            medicationName = med.medication_name ?: "Unknown",
-                            dosage = med.dosage,
-                            scheduledTime = schedule.scheduled_time,
-                            childId = childId
-                        )
-                        upcomingMeds.add(upcomingMed)
-                        println("[$TAG]: Added medication: ${upcomingMed.medicationName} at ${upcomingMed.scheduledTime}")
+                    if (schedules.isNotEmpty()) {
+                        schedules.forEach { schedule ->
+                            val upcomingMed = UpcomingMedication(
+                                medicationName = med.medication_name ?: "Unknown",
+                                dosage = med.dosage,
+                                scheduledTime = schedule.scheduled_time,
+                                childId = childId
+                            )
+                            upcomingMeds.add(upcomingMed)
+                            println("[$TAG]: Added medication: ${upcomingMed.medicationName} at ${upcomingMed.scheduledTime}")
+                        }
+                    } else {
+                        // Fallback to frequency-based scheduled times (08:00, 14:00, 20:00)
+                        val timestamps = com.example.carelyo.utils.MedicationSchedulerHelper.generateScheduleTimestamps(med.start_date, med.frequency)
+                        timestamps.forEach { timeStr ->
+                            val upcomingMed = UpcomingMedication(
+                                medicationName = med.medication_name ?: "Unknown",
+                                dosage = med.dosage,
+                                scheduledTime = timeStr,
+                                childId = childId
+                            )
+                            upcomingMeds.add(upcomingMed)
+                            println("[$TAG]: Added fallback medication: ${upcomingMed.medicationName} at $timeStr")
+                        }
                     }
                 }
             }

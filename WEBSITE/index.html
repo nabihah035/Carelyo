@@ -26,8 +26,7 @@
             </div>
         </header>
 
-        <!-- 4 Metric Cards -->
-        <section class="grid-4">
+        <section class="grid-3">
             <div class="dashboard-stat-card" onclick="window.location.href='appointments.html'" title="View Today's Appointments">
                 <div class="stat-number" id="stat-appointments-today">-</div>
                 <div>
@@ -51,26 +50,16 @@
                     <div class="stat-subtext">require follow-up</div>
                 </div>
             </div>
-            
-            <div class="dashboard-stat-card" onclick="window.location.href='reminders.html'" title="View Pending Reminders">
-                <div class="stat-number danger" id="stat-pending-reminders">-</div>
-                <div>
-                    <div class="stat-label">Pending Reminders</div>
-                    <div class="stat-subtext">awaiting dispatch</div>
-                </div>
-            </div>
         </section>
 
-        <!-- Attention Required Banner -->
-        <div class="attention-card" onclick="window.location.href='vaccinations.html'" id="attention-card">
-            <div>
+        <!-- Attention Required Banner — shows issues across Appointments, Vaccinations & Notifications -->
+        <div class="attention-card" id="attention-card">
+            <div style="width:100%;">
                 <div class="attention-label">Attention Required</div>
-                <div class="attention-message" id="attention-text">
-                    <span>•</span>
-                    <span id="attention-details">Loading overdue notices...</span>
+                <div id="attention-issues-list" class="attention-issues-list">
+                    <span style="color:#94a3b8;font-size:13px;">Checking for issues…</span>
                 </div>
             </div>
-            <i class="ph ph-arrow-right attention-arrow"></i>
         </div>
 
         <!-- Today's Schedule -->

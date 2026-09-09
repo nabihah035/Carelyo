@@ -124,54 +124,10 @@ async function loadDashboardData(clinicId, userSession) {
         const totalOverdue = overdueCount || 0;
         document.getElementById('stat-overdue-vaccines').innerText = totalOverdue.toLocaleString();
 
-        // 4. Stat: Pending Reminders (filtered by this clinic's children or parents)
-        let reminderQuery = window.supabaseClient
-            .from('REMINDER')
-            .select('remindid', { count: 'exact', head: true })
-            .eq('is_sent', false);
+        // 4. Attention Required — check Appointments, Vaccinations, Notifications
+        await loadAttentionBanner(clinicId, clinicChildIds, totalOverdue);
 
-        if (clinicId) {
-            if (clinicChildIds.length > 0) {
-                reminderQuery = reminderQuery.in('childid', clinicChildIds);
-            } else if (clinicUserIds.length > 0) {
-                reminderQuery = reminderQuery.in('parentid', clinicUserIds);
-            }
-        }
-
-        let pendingRemindersCount = 0;
-        try {
-            const { count: remCount, error: remError } = await reminderQuery;
-            if (!remError && remCount !== null) {
-                pendingRemindersCount = remCount;
-            } else {
-                let altQuery = window.supabaseClient
-                    .from('REMINDER')
-                    .select('remindid', { count: 'exact', head: true })
-                    .ilike('noti_status', 'pending');
-                if (clinicId && clinicChildIds.length > 0) {
-                    altQuery = altQuery.in('childid', clinicChildIds);
-                }
-                const { count: altCount } = await altQuery;
-                pendingRemindersCount = altCount || 0;
-            }
-        } catch (e) {
-            console.warn("Could not query REMINDER table:", e);
-        }
-        document.getElementById('stat-pending-reminders').innerText = pendingRemindersCount.toLocaleString();
-
-        // 5. Attention Required Banner
-        const attentionDetails = document.getElementById('attention-details');
-        if (attentionDetails) {
-            if (totalOverdue > 0) {
-                attentionDetails.innerText = `${totalOverdue} overdue vaccination doses — children need to be contacted`;
-            } else {
-                attentionDetails.innerText = `All vaccination doses are up to date — no action needed`;
-                const textEl = document.getElementById('attention-text');
-                if (textEl) textEl.style.color = 'var(--success-color)';
-            }
-        }
-
-        // 6. Today's Schedule List
+        // 5. Today's Schedule List
         await loadTodaySchedule(clinicId, today);
 
     } catch (err) {
@@ -179,7 +135,105 @@ async function loadDashboardData(clinicId, userSession) {
     }
 }
 
+// ─── Attention Required Banner ──────────────────────────────────────────────
+// Queries three problem areas against the live schema:
+//   • APPOINTMENT  — status = 'pending'  (unconfirmed appointments)
+//   • CHILD_VACCINE — status ilike 'overdue' (already computed, passed in)
+//   • NOTIFICATION  — is_read = false  (unread notifications for this clinic)
+// Each area that has issues renders a clickable red bullet linking to its page.
+// If all three are clear, shows a single green "All clear" message.
+async function loadAttentionBanner(clinicId, clinicChildIds, overdueVaccines) {
+    const list = document.getElementById('attention-issues-list');
+    if (!list) return;
+
+    const issues = [];   // { message, href, icon }
+    const clears = [];   // strings for areas that are fine
+
+    try {
+        // ── 1. Pending / unconfirmed appointments ─────────────────────────
+        // APPOINTMENT.status = 'pending' means not yet confirmed by staff
+        let pendingApptQuery = window.supabaseClient
+            .from('APPOINTMENT')
+            .select('appid', { count: 'exact', head: true })
+            .ilike('status', 'pending');
+        if (clinicId) pendingApptQuery = pendingApptQuery.eq('clinicid', clinicId);
+
+        const { count: pendingCount } = await pendingApptQuery;
+        const totalPending = pendingCount || 0;
+
+        if (totalPending > 0) {
+            issues.push({
+                icon: 'ph-calendar-x',
+                message: `${totalPending} appointment${totalPending > 1 ? 's' : ''} pending confirmation`,
+                href: 'appointments.html'
+            });
+        } else {
+            clears.push('appointments');
+        }
+
+        // ── 2. Overdue vaccinations ───────────────────────────────────────
+        // CHILD_VACCINE.status = 'overdue' — count already computed by loadDashboardData
+        if (overdueVaccines > 0) {
+            issues.push({
+                icon: 'ph-syringe',
+                message: `${overdueVaccines} overdue vaccination dose${overdueVaccines > 1 ? 's' : ''} — children need follow-up`,
+                href: 'vaccinations.html'
+            });
+        } else {
+            clears.push('vaccinations');
+        }
+
+        // ── 3. Unread notifications ───────────────────────────────────────
+        // NOTIFICATION.is_read = false — unread rows for this clinic
+        let unreadNotifQuery = window.supabaseClient
+            .from('NOTIFICATION')
+            .select('notificationid', { count: 'exact', head: true })
+            .eq('is_read', false);
+        if (clinicId) unreadNotifQuery = unreadNotifQuery.eq('clinicid', clinicId);
+
+        const { count: unreadCount } = await unreadNotifQuery;
+        const totalUnread = unreadCount || 0;
+
+        if (totalUnread > 0) {
+            issues.push({
+                icon: 'ph-bell-ringing',
+                message: `${totalUnread} unread notification${totalUnread > 1 ? 's' : ''} awaiting review`,
+                href: 'notifications.html'
+            });
+        } else {
+            clears.push('notifications');
+        }
+
+    } catch (err) {
+        console.warn('Could not fully load attention banner:', err);
+    }
+
+    // ── Render ─────────────────────────────────────────────────────────────
+    list.innerHTML = '';
+
+    if (issues.length === 0) {
+        // All three areas are clear — show single green message
+        list.innerHTML = `
+            <div class="attention-issue-row all-clear">
+                <i class="ph ph-check-circle attention-issue-icon"></i>
+                <span>All clear — no issues in appointments, vaccinations, or notifications</span>
+            </div>`;
+    } else {
+        issues.forEach(({ icon, message, href }) => {
+            const row = document.createElement('div');
+            row.className = 'attention-issue-row';
+            row.innerHTML = `
+                <i class="ph ${icon} attention-issue-icon"></i>
+                <span>• ${message}</span>
+                <i class="ph ph-arrow-right" style="margin-left:auto;font-size:12px;color:#94a3b8;"></i>`;
+            row.addEventListener('click', () => window.location.href = href);
+            list.appendChild(row);
+        });
+    }
+}
+
 async function loadTodaySchedule(clinicId, today) {
+
     const listContainer = document.getElementById('today-schedule-list');
     if (!listContainer) return;
 
@@ -188,17 +242,11 @@ async function loadTodaySchedule(clinicId, today) {
             .from('APPOINTMENT')
             .select(`
                 appid,
-                appointment_date,
                 appointment_time,
                 purpose,
-                notes,
                 status,
                 CHILD (
                     childid,
-                    full_name
-                ),
-                USER (
-                    userid,
                     full_name
                 )
             `)
@@ -209,23 +257,17 @@ async function loadTodaySchedule(clinicId, today) {
 
         let { data: appointments, error } = await scheduleQuery;
 
-        // If no appointments for today, show upcoming or recent so schedule is not completely empty
+        // If no appointments for today, show most recent ones so schedule isn't empty
         if (!appointments || appointments.length === 0) {
             let fallbackQuery = window.supabaseClient
                 .from('APPOINTMENT')
                 .select(`
                     appid,
-                    appointment_date,
                     appointment_time,
                     purpose,
-                    notes,
                     status,
                     CHILD (
                         childid,
-                        full_name
-                    ),
-                    USER (
-                        userid,
                         full_name
                     )
                 `)
@@ -249,31 +291,27 @@ async function loadTodaySchedule(clinicId, today) {
 
         listContainer.innerHTML = '';
         appointments.forEach(appt => {
+            // Child name is the primary label (CHILD.full_name via FK APPOINTMENT.childid)
             const childName = appt.CHILD ? appt.CHILD.full_name : 'Unknown Child';
-            
-            // Format time e.g. "08:30"
-            let timeStr = '09:00';
-            if (appt.appointment_time) {
-                timeStr = appt.appointment_time.slice(0, 5);
-            }
 
-            // Description / meta line
-            let metaParts = [];
-            if (appt.purpose) metaParts.push(appt.purpose);
-            if (appt.notes) metaParts.push(appt.notes);
-            if (appt.USER && appt.USER.full_name) metaParts.push(`Parent: ${appt.USER.full_name}`);
-            const metaStr = metaParts.length > 0 ? metaParts.join(' — ') : 'General Appointment';
+            // Time from APPOINTMENT.appointment_time (time without time zone) e.g. "08:30:00"
+            const timeStr = appt.appointment_time ? appt.appointment_time.slice(0, 5) : '—';
 
-            // Status styling
+            // Meta line: purpose only (schema: APPOINTMENT.purpose text)
+            const metaStr = appt.purpose || 'General Appointment';
+
+            // Status pill mapping — covers all realistic APPOINTMENT.status values
             const rawStatus = (appt.status || 'Scheduled').trim();
             const lowerStatus = rawStatus.toLowerCase();
             let pillClass = 'status-scheduled';
-            if (lowerStatus === 'completed') pillClass = 'status-completed';
-            else if (lowerStatus === 'upcoming') pillClass = 'status-upcoming';
-            else if (lowerStatus === 'cancelled') pillClass = 'status-cancelled';
+            if      (lowerStatus === 'completed')                          pillClass = 'status-completed';
+            else if (lowerStatus === 'confirmed')                          pillClass = 'status-confirmed';
+            else if (lowerStatus === 'in progress' || lowerStatus === 'inprogress') pillClass = 'status-inprogress';
+            else if (lowerStatus === 'cancelled'  || lowerStatus === 'canceled')    pillClass = 'status-cancelled';
+            else if (lowerStatus === 'upcoming'   || lowerStatus === 'scheduled')   pillClass = 'status-scheduled';
 
             const rowHtml = `
-                <div class="schedule-row" onclick="window.location.href='appointments.html'" style="cursor: pointer;">
+                <div class="schedule-row" onclick="window.location.href='appointments.html'" style="cursor:pointer;">
                     <div class="schedule-time">${timeStr}</div>
                     <div class="schedule-details">
                         <div class="schedule-patient-name">${childName}</div>

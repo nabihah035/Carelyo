@@ -114,10 +114,6 @@ async function renderSidebar() {
                 <i class="ph ph-shield"></i>
                 <span>Vaccinations</span>
             </a>
-            <a href="reminders.html" class="nav-item" id="nav-reminders">
-                <i class="ph ph-bell"></i>
-                <span>Reminders</span>
-            </a>
             <a href="notifications.html" class="nav-item" id="nav-notifications">
                 <i class="ph ph-chat-teardrop-dots"></i>
                 <span>Notifications</span>

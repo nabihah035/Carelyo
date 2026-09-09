@@ -240,7 +240,7 @@ object NotificationSyncManager {
                 }
             }
 
-            // 5. Sync Medication Schedule (is_active = true)
+            // 5. Sync Medication Schedule (time-based: 1 time/day -> 08:00; 2 times/day -> 08:00, 20:00; 3 times/day -> 08:00, 14:00, 20:00)
             if (childIds.isNotEmpty()) {
                 try {
                     val activeMeds = SupabaseClient.client.postgrest["MEDICATION"]
@@ -254,45 +254,90 @@ object NotificationSyncManager {
 
                     val medIds = activeMeds.map { it.MedID }
                     if (medIds.isNotEmpty()) {
-                        val schedules = SupabaseClient.client.postgrest["MEDICATION_SCHEDULE"]
-                            .select {
-                                filter {
-                                    isIn("medid", medIds)
+                        val schedules = try {
+                            SupabaseClient.client.postgrest["MEDICATION_SCHEDULE"]
+                                .select {
+                                    filter {
+                                        isIn("medid", medIds)
+                                    }
+                                }
+                                .decodeList<MedicationSchedule>()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to load medication schedules", e)
+                            emptyList()
+                        }
+
+                        val schedulesByMedId = schedules.groupBy { it.MedID }
+                        val medMap = activeMeds.associateBy { it.MedID }
+                        val nowCal = Calendar.getInstance()
+                        val currentHour = nowCal.get(Calendar.HOUR_OF_DAY)
+                        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        val todayStr = dateFormat.format(Date())
+                        val todayDate = dateFormat.parse(todayStr) ?: Date()
+
+                        for (med in activeMeds) {
+                            // Check end date
+                            if (!med.end_date.isNullOrEmpty()) {
+                                val endDate = try { dateFormat.parse(med.end_date) } catch (_: Exception) { null }
+                                if (endDate != null && endDate.before(todayDate)) {
+                                    continue
                                 }
                             }
-                            .decodeList<MedicationSchedule>()
 
-                        val medMap = activeMeds.associateBy { it.MedID }
+                            val childName = childMap[med.ChildID]?.full_name ?: "your child"
+                            val medName = med.medication_name ?: "Medication"
+                            val dosage = if (!med.dosage.isNullOrEmpty()) " (${med.dosage})" else ""
+                            val medSchedules = schedulesByMedId[med.MedID] ?: emptyList()
 
-                        for (sched in schedules) {
-                            if (sched.MedScheduleID in existingMedSchedIds) continue
-
-                            val med = medMap[sched.MedID]
-                            val childName = childMap[med?.ChildID]?.full_name ?: "your child"
-                            val medName = med?.medication_name ?: "Medication"
-                            val dosage = if (!med?.dosage.isNullOrEmpty()) " (${med.dosage})" else ""
-
-                            val notifInsert = NotificationInsert(
-                                userid = userId,
-                                childid = med?.ChildID,
-                                medscheduleid = sched.MedScheduleID,
-                                title = "Medication Reminder: $medName",
-                                message = "Time to give $medName$dosage to $childName.",
-                                type = "medication",
-                                is_read = false
-                            )
-
-                            try {
-                                SupabaseClient.client.postgrest["NOTIFICATION"].insert(notifInsert)
-                                showNotification(
-                                    context,
-                                    30000 + sched.MedScheduleID,
-                                    notifInsert.title ?: "Medication Reminder",
-                                    notifInsert.message ?: ""
-                                )
-                            } catch (e: Exception) {
-                                Log.e(TAG, "Error inserting medication notification", e)
+                            // Get target hours from MEDICATION_SCHEDULE or fallback to frequency mapping
+                            val targetHoursWithSchedule = if (medSchedules.isNotEmpty()) {
+                                medSchedules.mapNotNull { sched ->
+                                    val hour = com.example.carelyo.utils.MedicationSchedulerHelper.extractHourFromSchedule(sched.scheduled_time)
+                                    if (hour != null) Pair(hour, sched) else null
+                                }
+                            } else {
+                                com.example.carelyo.utils.MedicationSchedulerHelper.getScheduledHours(med.frequency)
+                                    .map { Pair(it, null) }
                             }
+
+                            for ((hour, sched) in targetHoursWithSchedule) {
+                                val dailyDoseKey = "med_${med.MedID}_${hour}_${todayStr}"
+                                val timeStr = com.example.carelyo.utils.MedicationSchedulerHelper.formatHourToString(hour)
+
+                                // Trigger if scheduled hour has arrived today and hasn't been alerted today
+                                if (currentHour >= hour && !alertedIds.contains(dailyDoseKey)) {
+                                    val notifInsert = NotificationInsert(
+                                        userid = userId,
+                                        childid = med.ChildID,
+                                        medscheduleid = sched?.MedScheduleID,
+                                        title = "Medication Reminder: $medName",
+                                        message = "Time to give $medName$dosage to $childName ($timeStr).",
+                                        type = "medication",
+                                        is_read = false
+                                    )
+
+                                    try {
+                                        SupabaseClient.client.postgrest["NOTIFICATION"].insert(notifInsert)
+                                        val notifId = 30000 + (med.MedID * 10) + (hour % 10)
+                                        showNotification(
+                                            context,
+                                            notifId,
+                                            notifInsert.title ?: "Medication Reminder",
+                                            notifInsert.message ?: ""
+                                        )
+                                        alertedIds.add(dailyDoseKey)
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error inserting medication notification", e)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Also ensure alarms are scheduled with AlarmManager
+                        try {
+                            MedicationReminderScheduler.scheduleMedicationAlarms(context, userId)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error scheduling alarms", e)
                         }
                     }
                 } catch (e: Exception) {

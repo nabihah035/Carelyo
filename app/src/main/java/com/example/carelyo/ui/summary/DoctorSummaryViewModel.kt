@@ -149,7 +149,7 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
         clinicName: String,
         rawNotes: String
     ) {
-        _summaryState.value = UiState.Loading("Generating AI summary with Qwen2.5:3b... This may take up to a minute.")
+        _summaryState.value = UiState.Loading("Generating AI summary with Qwen2.5:3b... Please wait.")
 
         viewModelScope.launch {
             val currentDate = dateFormat.format(Date())
@@ -179,7 +179,10 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
                         model = "qwen2.5:3b",
                         messages = listOf(systemPrompt, userPrompt),
                         stream = false,
-                        options = mapOf("num_predict" to 300)
+                        options = mapOf(
+                            "num_predict" to 250,
+                            "temperature" to 0.3
+                        )
                     )
 
                     val response = NetworkClient.ollamaApi.sendChatMessage(requestPayload)

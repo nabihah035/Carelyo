@@ -10,7 +10,6 @@ import com.example.carelyo.R
 class ChatAdapter(private val messages: List<ChatMessage>) :
     RecyclerView.Adapter<ChatAdapter.MessageViewHolder>() {
 
-    // Unique IDs to distinguish between user messages and bot messages
     private val VIEW_TYPE_USER = 1
     private val VIEW_TYPE_BOT = 0
 
@@ -19,7 +18,6 @@ class ChatAdapter(private val messages: List<ChatMessage>) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
-        // Choose the correct XML design file based on who sent the message
         val layoutId = if (viewType == VIEW_TYPE_USER) {
             R.layout.item_user_message
         } else {
@@ -41,18 +39,14 @@ class ChatAdapter(private val messages: List<ChatMessage>) :
 
         fun bind(message: ChatMessage) {
             if (message.isTyping) {
-                messageText.text = "Typing..."
-
-                // Add a simple fade animation so the user knows the app hasn't frozen
+                messageText.text = "Thinking..."
                 messageText.animate()
-                    .alpha(0.3f)
-                    .setDuration(800)
+                    .alpha(0.35f)
+                    .setDuration(600)
                     .withEndAction {
-                        messageText.animate().alpha(1.0f).setDuration(800).start()
+                        messageText.animate().alpha(1.0f).setDuration(600).start()
                     }.start()
-
             } else {
-                // Clear any running animation states when reuse patterns apply standard text
                 messageText.animate().cancel()
                 messageText.alpha = 1.0f
                 messageText.text = message.message

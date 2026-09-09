@@ -206,7 +206,11 @@ class ReminderActivity : AppCompatActivity() {
         actvChildSelect.setAdapter(childAdapter)
 
         // Setup Frequency Dropdown
-        val frequencies = listOf("1 time a day", "2 times a day", "3 times a day")
+        val frequencies = listOf(
+            "1 time/day (08:00)",
+            "2 times/day (08:00, 20:00)",
+            "3 times/day (08:00, 14:00, 20:00)"
+        )
         val freqAdapter = android.widget.ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, frequencies)
         actvFrequency.setAdapter(freqAdapter)
 
@@ -260,30 +264,11 @@ class ReminderActivity : AppCompatActivity() {
                 is_active = true
             )
 
-            // Calculate auto-spread times
-            val times = mutableListOf<String>()
-            val todayStr = dateFormatter.format(java.util.Date())
-            // e.g. "2026-06-05T08:00:00+08:00"
-            val timeFormatter = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:00XXX", java.util.Locale.getDefault())
-            
-            val numTimes = when (frequencyStr) {
-                "3 times a day" -> 3
-                "2 times a day" -> 2
-                else -> 1
-            }
-            
-            for (i in 0 until numTimes) {
-                val cal = java.util.Calendar.getInstance()
-                if (startDate.isNotEmpty()) {
-                    cal.time = dateFormatter.parse(startDate) ?: java.util.Date()
-                }
-                when (numTimes) {
-                    3 -> cal.set(java.util.Calendar.HOUR_OF_DAY, 8 + (i * 6)) // 8 AM, 2 PM, 8 PM
-                    2 -> cal.set(java.util.Calendar.HOUR_OF_DAY, 8 + (i * 12)) // 8 AM, 8 PM
-                    else -> cal.set(java.util.Calendar.HOUR_OF_DAY, 8) // 8 AM
-                }
-                times.add(timeFormatter.format(cal.time))
-            }
+            // Generate scheduled times based on frequency:
+            // 1 time/day -> 08:00
+            // 2 times/day -> 08:00, 20:00
+            // 3 times/day -> 08:00, 14:00, 20:00
+            val times = com.example.carelyo.utils.MedicationSchedulerHelper.generateScheduleTimestamps(startDate, frequencyStr)
 
             viewModel.addMedication(medInsert, times)
             dialog.dismiss()

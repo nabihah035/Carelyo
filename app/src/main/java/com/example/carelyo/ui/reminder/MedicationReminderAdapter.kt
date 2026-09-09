@@ -31,13 +31,11 @@ class MedicationReminderAdapter(
             binding.tvMedName.text = medication.medication_name ?: "Unknown"
             
             val dosage = medication.dosage ?: ""
-            val freq = medication.frequency ?: ""
-            binding.tvMedDetails.text = if (dosage.isNotEmpty() && freq.isNotEmpty()) {
-                "$dosage, $freq"
-            } else if (dosage.isNotEmpty()) {
-                dosage
+            val freqFormatted = com.example.carelyo.utils.MedicationSchedulerHelper.formatFrequencyWithTimes(medication.frequency)
+            binding.tvMedDetails.text = if (dosage.isNotEmpty()) {
+                "$dosage • $freqFormatted"
             } else {
-                freq
+                freqFormatted
             }
 
             // Display formatted start and end dates
@@ -61,7 +59,7 @@ class MedicationReminderAdapter(
 
             // Remove listener temporarily so we don't trigger it while setting state
             binding.switchActive.setOnCheckedChangeListener(null)
-            binding.switchActive.isChecked = medication.is_active ?: false
+            binding.switchActive.isChecked = medication.is_active
             binding.switchActive.setOnCheckedChangeListener { _, isChecked ->
                 onToggleActive(medication, isChecked)
             }

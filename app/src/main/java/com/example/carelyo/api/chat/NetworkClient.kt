@@ -8,12 +8,14 @@ import retrofit2.converter.gson.GsonConverterFactory
 object NetworkClient {
     private const val BASE_URL = "http://10.157.25.131:11434/"
 
-    // 1. Create a custom OkHttpClient with expanded timeout limits
+    // 1. Create a custom OkHttpClient with expanded timeout limits to allow LLM ample time to generate summaries
     private val okHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
-            .connectTimeout(60, TimeUnit.SECONDS) // Time permitted to establish connection
-            .readTimeout(120, TimeUnit.SECONDS)   // Time permitted for Meditron to think and reply
-            .writeTimeout(60, TimeUnit.SECONDS)  // Time permitted to upload your text prompt
+            .connectTimeout(120, TimeUnit.SECONDS) // Time permitted to establish connection
+            .readTimeout(300, TimeUnit.SECONDS)    // 5 minutes permitted for LLM to think and return summary
+            .writeTimeout(120, TimeUnit.SECONDS)   // Time permitted to upload text prompt
+            .callTimeout(360, TimeUnit.SECONDS)    // Overall call timeout
+            .retryOnConnectionFailure(true)
             .build()
     }
 
@@ -21,7 +23,7 @@ object NetworkClient {
     val ollamaApi: OllamaApiService by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .client(okHttpClient) // <--- CRITICAL: Injecting the new timeout rules here
+            .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(OllamaApiService::class.java)

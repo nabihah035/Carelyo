@@ -255,6 +255,11 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
                         .insert(scheduleInserts)
                 }
 
+                // Schedule alarms immediately
+                try {
+                    com.example.carelyo.service.MedicationReminderScheduler.scheduleMedicationAlarms(getApplication(), currentParentId)
+                } catch (_: Exception) {}
+
                 _operationResult.postValue(ReminderOperationResult.Success("Medication added successfully"))
                 loadMedicationsAndChildren(currentParentId) // reload
             } catch (e: Exception) {
@@ -271,6 +276,13 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
                     .update({ set("is_active", isActive) }) {
                         filter { eq("medid", medication.MedID) }
                     }
+
+                if (!isActive) {
+                    com.example.carelyo.service.MedicationReminderScheduler.cancelMedicationAlarms(getApplication(), medication.MedID)
+                } else {
+                    com.example.carelyo.service.MedicationReminderScheduler.scheduleMedicationAlarms(getApplication(), currentParentId)
+                }
+
                 loadMedicationsAndChildren(currentParentId)
             } catch (e: Exception) {
                 _operationResult.postValue(ReminderOperationResult.Error("Failed to toggle medication"))
@@ -281,6 +293,9 @@ class ReminderViewModel(application: Application) : AndroidViewModel(application
     fun deleteMedication(medication: com.example.carelyo.data.entity.Medication) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // Cancel scheduled alarms first
+                com.example.carelyo.service.MedicationReminderScheduler.cancelMedicationAlarms(getApplication(), medication.MedID)
+
                 // Delete schedules first
                 com.example.carelyo.api.supabase.SupabaseClient.client
                     .postgrest["MEDICATION_SCHEDULE"]

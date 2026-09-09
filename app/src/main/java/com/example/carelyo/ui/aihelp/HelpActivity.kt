@@ -1,70 +1,120 @@
 package com.example.carelyo.ui.aihelp
 
-import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Bundle
+import android.view.View
 import android.widget.EditText
+import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.example.carelyo.R
 import com.example.carelyo.api.chat.ChatViewModel
 import com.example.carelyo.databinding.ActivityHelpBinding
 import kotlinx.coroutines.launch
-import android.graphics.Color
-import android.graphics.Typeface
-import androidx.core.content.ContextCompat
 
 class HelpActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityHelpBinding
-
-    // Link the Activity to your architectural ChatViewModel
     private val viewModel: ChatViewModel by viewModels()
 
     private lateinit var chatAdapter: ChatAdapter
     private val chatMessages = mutableListOf<ChatMessage>()
     private lateinit var messageInput: EditText
-    private lateinit var sendButton: android.widget.ImageButton
+    private lateinit var sendButton: ImageButton
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize View Binding for Activity
         binding = ActivityHelpBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Set up the back navigation button
+        setupWindowInsets()
         setupNavigation()
-
         setupChatRecyclerView()
         setupSuggestedQuestions()
         setupMessageInput()
 
-        // Listen to the ViewModel for data updates
         observeViewModel()
+    }
+
+    private fun setupWindowInsets() {
+        // Adjust for soft keyboard (IME) and system bars so input is never obscured
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, windowInsets ->
+            val imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime())
+            val systemBarsInsets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+            val bottomInset = if (imeInsets.bottom > 0) imeInsets.bottom else systemBarsInsets.bottom
+
+            binding.root.setPadding(
+                systemBarsInsets.left,
+                systemBarsInsets.top,
+                systemBarsInsets.right,
+                bottomInset
+            )
+
+            // Auto-scroll RecyclerView to bottom when keyboard opens
+            if (imeInsets.bottom > 0 && chatMessages.isNotEmpty()) {
+                binding.chatRecyclerView.postDelayed({
+                    binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size - 1)
+                }, 100)
+            }
+
+            windowInsets
+        }
     }
 
     private fun setupNavigation() {
         binding.btnBack.setOnClickListener {
             finish()
         }
+
         binding.btnNewChat.setOnClickListener {
             viewModel.startNewSession()
-            binding.suggestedQuestionsLayout.visibility = android.view.View.VISIBLE
+            chatMessages.clear()
+            chatAdapter.notifyDataSetChanged()
+            updateVisibility(hasMessages = false)
             Toast.makeText(this, "Started new chat session", Toast.LENGTH_SHORT).show()
         }
     }
 
     private fun setupChatRecyclerView() {
         chatAdapter = ChatAdapter(chatMessages)
-        binding.chatRecyclerView.layoutManager = LinearLayoutManager(this)
+        val layoutManager = LinearLayoutManager(this).apply {
+            stackFromEnd = false
+        }
+        binding.chatRecyclerView.layoutManager = layoutManager
         binding.chatRecyclerView.adapter = chatAdapter
+
+        // Scroll to latest message when layout changes (e.g. keyboard opens/closes)
+        binding.chatRecyclerView.addOnLayoutChangeListener { _, _, _, _, bottom, _, _, _, oldBottom ->
+            if (bottom < oldBottom && chatMessages.isNotEmpty()) {
+                binding.chatRecyclerView.post {
+                    binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size - 1)
+                }
+            }
+        }
+    }
+
+    private fun updateVisibility(hasMessages: Boolean) {
+        if (hasMessages) {
+            binding.welcomeContainer.visibility = View.GONE
+            binding.chatRecyclerView.visibility = View.VISIBLE
+        } else {
+            binding.welcomeContainer.visibility = View.VISIBLE
+            binding.chatRecyclerView.visibility = View.GONE
+        }
     }
 
     private fun observeViewModel() {
@@ -74,13 +124,7 @@ class HelpActivity : AppCompatActivity() {
                     // 1. Filter out system prompt setup messages
                     val displayableMessages = apiMessages.filter { it.role != "system" }
 
-                    if (displayableMessages.isNotEmpty()) {
-                        binding.suggestedQuestionsLayout.visibility = android.view.View.GONE
-                    } else {
-                        binding.suggestedQuestionsLayout.visibility = android.view.View.VISIBLE
-                    }
-
-                    // 2. Map backend data models to your standard chat UI items
+                    // 2. Map backend data models to UI chat items
                     val uiMessages = displayableMessages.map { apiMsg ->
                         ChatMessage(
                             message = apiMsg.content,
@@ -89,8 +133,7 @@ class HelpActivity : AppCompatActivity() {
                         )
                     }.toMutableList()
 
-                    // 3. CRITICAL FIX: If the last message came from the user,
-                    // it means the AI backend is currently processing. Append the loading state here!
+                    // 3. If the last message came from the user, AI is processing -> append typing state
                     if (displayableMessages.isNotEmpty() && displayableMessages.last().role == "user") {
                         uiMessages.add(
                             ChatMessage(
@@ -106,9 +149,14 @@ class HelpActivity : AppCompatActivity() {
                     chatMessages.addAll(uiMessages)
                     chatAdapter.notifyDataSetChanged()
 
-                    // 5. Instantly autoscroll down to follow the animation frame
+                    // 5. Update welcome container vs chat list visibility
+                    updateVisibility(hasMessages = chatMessages.isNotEmpty())
+
+                    // 6. Scroll down to follow the latest message
                     if (chatMessages.isNotEmpty()) {
-                        binding.chatRecyclerView.scrollToPosition(chatMessages.size - 1)
+                        binding.chatRecyclerView.post {
+                            binding.chatRecyclerView.scrollToPosition(chatMessages.size - 1)
+                        }
                     }
                 }
             }
@@ -118,30 +166,28 @@ class HelpActivity : AppCompatActivity() {
     private fun sendMessage() {
         val message = messageInput.text.toString().trim()
         if (message.isEmpty()) {
-            Toast.makeText(this, "Please enter a message", Toast.LENGTH_SHORT).show()
             return
         }
 
         // Clear input field immediately
         messageInput.text.clear()
 
-        // Send data directly to ViewModel
+        // Send to ViewModel
         viewModel.sendMessageToMeditron(message)
     }
 
     private fun setupSuggestedQuestions() {
         val questions = listOf(
-            "What are common childhood illnesses in Malaysia?",
+            "What should I do if my child has a fever?",
+            "When should my baby start solid foods?",
             "What is the recommended vaccination schedule in Malaysia?",
-            "How to treat fever in children?",
             "What are signs of dengue fever in kids?",
-            "Nutrition guidelines for Malaysian children"
+            "How to handle common cold in toddlers?"
         )
 
         val suggestionsLayout = binding.suggestedQuestionsLayout
-        suggestionsLayout.removeAllViews() // Avoid duplication
+        suggestionsLayout.removeAllViews()
 
-        // Convert dps to pixels for accurate layout scaling
         val density = resources.displayMetrics.density
         val paddingHorizontal = (18 * density).toInt()
         val paddingVertical = (14 * density).toInt()
@@ -149,13 +195,11 @@ class HelpActivity : AppCompatActivity() {
 
         questions.forEach { question ->
             val questionView = TextView(this).apply {
-                text = question // Removed bullet point to match image_2ed002.png
+                text = question
                 textSize = 15f
-                setTextColor(Color.parseColor("#0F766E")) // Deep teal/mint text
-                setTypeface(null, Typeface.BOLD) // Bold text style
+                setTextColor(Color.parseColor("#0F766E"))
+                setTypeface(null, Typeface.BOLD)
                 setPadding(paddingHorizontal, paddingVertical, paddingHorizontal, paddingVertical)
-
-                // Reference the light mint background drawable
                 background = ContextCompat.getDrawable(this@HelpActivity, R.drawable.bg_suggestion_pill)
 
                 layoutParams = LinearLayout.LayoutParams(
@@ -167,7 +211,7 @@ class HelpActivity : AppCompatActivity() {
 
                 setOnClickListener {
                     binding.messageInput.setText(question)
-                    sendMessage() // Make sure this matches your layout variable binding name
+                    sendMessage()
                 }
             }
             suggestionsLayout.addView(questionView)
@@ -181,21 +225,13 @@ class HelpActivity : AppCompatActivity() {
         sendButton.setOnClickListener {
             sendMessage()
         }
-    }
 
-    private fun showTypingIndicator() {
-        if (chatMessages.isEmpty() || !chatMessages.last().isTyping) {
-            chatMessages.add(ChatMessage("...", false, isTyping = true))
-            chatAdapter.notifyItemInserted(chatMessages.size - 1)
-            binding.chatRecyclerView.scrollToPosition(chatMessages.size - 1)
-        }
-    }
-
-    private fun hideTypingIndicator() {
-        if (chatMessages.isNotEmpty() && chatMessages.last().isTyping) {
-            val index = chatMessages.size - 1
-            chatMessages.removeAt(index)
-            chatAdapter.notifyItemRemoved(index)
+        messageInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && chatMessages.isNotEmpty()) {
+                binding.chatRecyclerView.postDelayed({
+                    binding.chatRecyclerView.smoothScrollToPosition(chatMessages.size - 1)
+                }, 150)
+            }
         }
     }
 }
