@@ -3,87 +3,497 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parent Accounts - Carelyo Staff</title>
+    <title>Parents - Carelyo Staff</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* ── Shared ───────────────────────────────────── */
+        .parents-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            gap: 16px;
+        }
+
+        .parents-search {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 9px 14px;
+            flex: 1;
+            max-width: 340px;
+        }
+
+        .parents-search i { color: #94a3b8; font-size: 16px; }
+
+        .parents-search input {
+            border: none;
+            outline: none;
+            font-size: 14px;
+            font-family: var(--font-family);
+            color: #374151;
+            width: 100%;
+            background: transparent;
+        }
+
+        .parents-search input::placeholder { color: #94a3b8; }
+
+        /* ── Parents list table ──────────────────────── */
+        .parents-table-wrap {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .p-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .p-table th {
+            padding: 11px 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .p-table td {
+            padding: 14px 20px;
+            font-size: 14px;
+            color: #374151;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .p-table tbody tr:last-child td { border-bottom: none; }
+        .p-table tbody tr:hover { background: #f8fafc; }
+
+        .p-num-col    { color: #94a3b8; width: 48px; }
+        .p-name-col   { font-weight: 600; color: #111827; }
+        .p-phone-col  { color: #64748b; font-size: 13px; letter-spacing: 0.02em; }
+        .p-email-col  { color: #64748b; }
+        .p-date-col   { color: #64748b; font-size: 13px; }
+
+        .child-count-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            background: #f1f5f9;
+            color: #475569;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .view-children-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--primary-color);
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            white-space: nowrap;
+            transition: var(--transition);
+        }
+
+        .view-children-btn:hover { text-decoration: underline; }
+
+        /* ── Children detail view ────────────────────── */
+        .detail-view { display: none; }
+        .detail-view.active { display: block; }
+        .list-view { display: block; }
+        .list-view.hidden { display: none; }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .breadcrumb-link {
+            color: var(--primary-color);
+            cursor: pointer;
+            font-weight: 500;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: var(--font-family);
+            font-size: 14px;
+        }
+
+        .breadcrumb-link:hover { text-decoration: underline; }
+        .breadcrumb-sep { color: #94a3b8; }
+        .breadcrumb-current { color: #374151; font-weight: 500; }
+
+        /* ── Parent info card ────────────────────────── */
+        .parent-info-card {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .parent-info-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 6px;
+        }
+
+        .parent-info-meta {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 6px;
+        }
+
+        .parent-info-meta span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .parent-info-reg {
+            font-size: 13px;
+            color: #94a3b8;
+        }
+
+        .parent-child-count-box {
+            text-align: right;
+        }
+
+        .parent-child-count-num {
+            font-size: 32px;
+            font-weight: 700;
+            color: #111827;
+            line-height: 1;
+        }
+
+        .parent-child-count-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+
+        /* ── Children section ────────────────────────── */
+        .children-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .children-section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        /* ── Modals ──────────────────────────────────── */
+        .p-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .p-modal-overlay.open { display: flex; }
+
+        .p-modal-box {
+            background: #fff;
+            border-radius: 12px;
+            width: 440px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .p-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .p-modal-title { font-size: 16px; font-weight: 600; color: #111827; }
+
+        .p-modal-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #94a3b8;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .p-modal-close:hover { color: #374151; }
+
+        .p-modal-body { padding: 20px 24px; }
+
+        .p-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .p-form-row { display: flex; gap: 16px; }
+        .p-form-row .p-form-group { flex: 1; }
+
+        .p-form-label { font-size: 13px; font-weight: 500; color: #374151; }
+
+        .p-form-control {
+            padding: 9px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: var(--font-family);
+            color: #111827;
+            outline: none;
+            transition: border-color 0.15s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .p-form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0,140,165,0.1);
+        }
+
+        .p-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* ── Toast ───────────────────────────────────── */
+        #p-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            color: #fff;
+        }
+    </style>
 </head>
 <body>
     <main class="main-content">
-        <header class="page-header">
-            <h2 class="page-title">Parent Account Management</h2>
-            <button class="btn btn-primary" onclick="openModal()">
-                <i class="ph ph-user-plus"></i>
-                Add Parent
-            </button>
-        </header>
 
-        <div class="card mb-6">
-            <div class="search-bar">
-                <i class="ph ph-magnifying-glass"></i>
-                <input type="text" id="search-input" placeholder="Search by name or email...">
+        <!-- ══════════ LIST VIEW ══════════════════════════════════════════ -->
+        <div class="list-view" id="list-view">
+            <div class="parents-header">
+                <h2 class="page-title">Parents</h2>
+                <div class="parents-search">
+                    <i class="ph ph-magnifying-glass"></i>
+                    <input type="text" id="search-input" placeholder="Search by name or email...">
+                </div>
+                <button class="btn btn-primary" id="btn-add-parent">
+                    <i class="ph ph-plus"></i> Add Parent
+                </button>
+            </div>
+
+            <div class="parents-table-wrap">
+                <table class="p-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Full Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Registered</th>
+                            <th>Children</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="parents-tbody">
+                        <tr><td colspan="7" style="text-align:center;padding:32px;color:#64748b;">Loading parents…</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Parent Name</th>
-                        <th>Email</th>
-                        <th>Children</th>
-                        <th>Joined Date</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="parents-table-body">
-                    <!-- Data populated by JS -->
-                    <tr><td colspan="6" style="text-align: center;">Loading parents...</td></tr>
-                </tbody>
-            </table>
-            <div style="padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-color);">
-                <span style="font-size: 13px; color: var(--text-muted);" id="pagination-info">Showing 0 of 0 parent accounts</span>
-                <div style="display: flex; gap: 8px;">
-                    <button id="prev-page-btn" class="btn btn-outline btn-sm">Previous</button>
-                    <button id="page-number-btn" class="btn btn-primary btn-sm">1</button>
-                    <button id="next-page-btn" class="btn btn-outline btn-sm">Next</button>
+        <!-- ══════════ DETAIL VIEW ════════════════════════════════════════ -->
+        <div class="detail-view" id="detail-view">
+            <!-- Breadcrumb -->
+            <div class="breadcrumb">
+                <button class="breadcrumb-link" id="breadcrumb-back">Parents</button>
+                <span class="breadcrumb-sep">›</span>
+                <span class="breadcrumb-current" id="breadcrumb-name">—</span>
+            </div>
+
+            <!-- Parent info card -->
+            <div class="parent-info-card" id="parent-info-card">
+                <div>
+                    <div class="parent-info-name" id="detail-name">—</div>
+                    <div class="parent-info-meta">
+                        <span><i class="ph ph-phone"></i><span id="detail-phone">—</span></span>
+                        <span><i class="ph ph-envelope-simple"></i><span id="detail-email">—</span></span>
+                    </div>
+                    <div class="parent-info-reg" id="detail-reg">—</div>
                 </div>
+                <div class="parent-child-count-box">
+                    <div class="parent-child-count-num" id="detail-child-count">0</div>
+                    <div class="parent-child-count-label">registered child</div>
+                </div>
+            </div>
+
+            <!-- Children section -->
+            <div class="children-section-header">
+                <span class="children-section-title">Children</span>
+                <button class="btn btn-primary btn-sm" id="btn-add-child">
+                    <i class="ph ph-plus"></i> Add Child
+                </button>
+            </div>
+
+            <div class="parents-table-wrap">
+                <table class="p-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Full Name</th>
+                            <th>DOB</th>
+                            <th>Age</th>
+                            <th>Gender</th>
+                            <th>Blood</th>
+                            <th>Weight</th>
+                            <th>Height</th>
+                            <th>Records</th>
+                        </tr>
+                    </thead>
+                    <tbody id="children-tbody">
+                        <tr><td colspan="9" style="text-align:center;padding:32px;color:#64748b;">Loading…</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </main>
 
-    <!-- Parent Modal -->
-    <div id="parent-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-        <div class="modal-content" style="background: white; padding: 24px; border-radius: 8px; width: 400px; max-width: 90%;">
-            <h3 id="modal-title" style="margin-top: 0; margin-bottom: 16px;">Add Parent</h3>
-            <form id="parent-form">
-                <input type="hidden" id="parent-id">
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Full Name *</label>
-                    <input type="text" id="parent-name" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+    <!-- ── Add Parent Modal ─────────────────────────────────────── -->
+    <div class="p-modal-overlay" id="add-parent-modal">
+        <div class="p-modal-box">
+            <div class="p-modal-header">
+                <span class="p-modal-title">Add Parent</span>
+                <button class="p-modal-close" id="close-add-parent"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="p-modal-body">
+                <div class="p-form-group">
+                    <label class="p-form-label">Full Name *</label>
+                    <input type="text" class="p-form-control" id="np-name" placeholder="Full name">
                 </div>
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Email *</label>
-                    <input type="email" id="parent-email" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                <div class="p-form-group">
+                    <label class="p-form-label">Email *</label>
+                    <input type="email" class="p-form-control" id="np-email" placeholder="email@example.com">
                 </div>
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Phone Number</label>
-                    <input type="text" id="parent-phone" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                <div class="p-form-group">
+                    <label class="p-form-label">Phone Number</label>
+                    <input type="text" class="p-form-control" id="np-phone" placeholder="012-345 6789">
                 </div>
-                <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 4px;" id="password-label">Password *</label>
-                    <input type="password" id="parent-password" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                <div class="p-form-group">
+                    <label class="p-form-label">Password *</label>
+                    <input type="password" class="p-form-control" id="np-password">
                 </div>
-                <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                    <button type="button" class="btn btn-outline" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="save-parent-btn">Save</button>
-                </div>
-            </form>
+            </div>
+            <div class="p-modal-footer">
+                <button class="btn btn-outline" id="cancel-add-parent">Cancel</button>
+                <button class="btn btn-primary" id="save-add-parent">Add Parent</button>
+            </div>
         </div>
     </div>
+
+    <!-- ── Add Child Modal ──────────────────────────────────────── -->
+    <div class="p-modal-overlay" id="add-child-modal">
+        <div class="p-modal-box">
+            <div class="p-modal-header">
+                <span class="p-modal-title">Add Child</span>
+                <button class="p-modal-close" id="close-add-child"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="p-modal-body">
+                <div class="p-form-group">
+                    <label class="p-form-label">Full Name *</label>
+                    <input type="text" class="p-form-control" id="nc-name" placeholder="Child's full name">
+                </div>
+                <div class="p-form-row">
+                    <div class="p-form-group">
+                        <label class="p-form-label">Date of Birth *</label>
+                        <input type="date" class="p-form-control" id="nc-dob">
+                    </div>
+                    <div class="p-form-group">
+                        <label class="p-form-label">Gender</label>
+                        <select class="p-form-control" id="nc-gender">
+                            <option value="">— Select —</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="p-form-row">
+                    <div class="p-form-group">
+                        <label class="p-form-label">Blood Type</label>
+                        <select class="p-form-control" id="nc-blood">
+                            <option value="">— Select —</option>
+                            <option>A+</option><option>A-</option>
+                            <option>B+</option><option>B-</option>
+                            <option>O+</option><option>O-</option>
+                            <option>AB+</option><option>AB-</option>
+                        </select>
+                    </div>
+                    <div class="p-form-group">
+                        <label class="p-form-label">Weight (kg)</label>
+                        <input type="text" class="p-form-control" id="nc-weight" placeholder="e.g. 12.5">
+                    </div>
+                </div>
+                <div class="p-form-group">
+                    <label class="p-form-label">Height (cm)</label>
+                    <input type="text" class="p-form-control" id="nc-height" placeholder="e.g. 85">
+                </div>
+            </div>
+            <div class="p-modal-footer">
+                <button class="btn btn-outline" id="cancel-add-child">Cancel</button>
+                <button class="btn btn-primary" id="save-add-child">Add Child</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="p-toast"></div>
 
     <!-- App Scripts -->
     <script src="env.js"></script>

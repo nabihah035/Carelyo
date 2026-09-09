@@ -30,9 +30,9 @@
             line-height: 1;
             margin-bottom: 6px;
         }
-        .notif-stat-number.sent  { color: var(--primary-color); }
-        .notif-stat-number.read  { color: var(--success-color); }
-        .notif-stat-number.failed{ color: var(--danger-color); }
+        .notif-stat-number.sent   { color: var(--primary-color); }
+        .notif-stat-number.read   { color: #374151; }
+        .notif-stat-number.unread { color: var(--danger-color); }
         .notif-stat-label {
             font-size: 13px;
             font-weight: 500;
@@ -144,13 +144,12 @@
                 <div class="notif-stat-label">Read</div>
             </div>
             <div class="notif-stat-card">
-                <div class="notif-stat-number failed" id="stat-failed">—</div>
+                <div class="notif-stat-number unread" id="stat-failed">—</div>
                 <div class="notif-stat-label">Unread</div>
             </div>
         </div>
 
-        <!-- Notifications table — 5 columns matching NOTIFICATION schema -->
-        <!-- Schema cols used: type, userid→USER.full_name, message, created_at, is_read -->
+        <!-- Notifications table — schema cols: type, userid→USER.full_name, message, created_at, is_read -->
         <div class="table-container">
             <table>
                 <thead>
@@ -170,7 +169,6 @@
     </main>
 
     <!-- Send Notification Modal -->
-    <!-- Channel is NOT stored in DB (no channel col in schema) — always sends via FCM Push -->
     <div class="modal-overlay" id="send-modal">
         <div class="modal-box">
             <div class="modal-header">
@@ -180,21 +178,32 @@
                 </button>
             </div>
 
-            <div class="form-group">
-                <label class="form-label" for="notif-recipient">Recipient (Parent)</label>
-                <select class="form-control" id="notif-recipient">
-                    <option value="">Loading parents...</option>
-                </select>
+            <!-- Type + Channel row (Channel is UI-only — not stored in schema) -->
+            <div style="display:flex; gap:16px; margin-bottom:16px;">
+                <div style="flex:1;">
+                    <label class="form-label" for="notif-type">Type</label>
+                    <select class="form-control" id="notif-type">
+                        <option value="General">General</option>
+                        <option value="Appointment">Appointment</option>
+                        <option value="Vaccination">Vaccination</option>
+                        <option value="Medication">Medication</option>
+                        <option value="Reminder">Reminder</option>
+                    </select>
+                </div>
+                <div style="flex:1;">
+                    <label class="form-label">Channel</label>
+                    <select class="form-control" id="notif-channel">
+                        <option value="In-App">In-App</option>
+                        <option value="Email">Email</option>
+                        <option value="SMS">SMS</option>
+                    </select>
+                </div>
             </div>
 
             <div class="form-group">
-                <label class="form-label" for="notif-type">Type</label>
-                <select class="form-control" id="notif-type">
-                    <option value="General">General</option>
-                    <option value="Appointment">Appointment</option>
-                    <option value="Vaccination">Vaccination</option>
-                    <option value="Medication">Medication</option>
-                    <option value="Reminder">Reminder</option>
+                <label class="form-label" for="notif-recipient">Recipient (Parent Name)</label>
+                <select class="form-control" id="notif-recipient">
+                    <option value="">Loading parents...</option>
                 </select>
             </div>
 
@@ -213,7 +222,6 @@
             <div class="modal-footer">
                 <button class="btn-cancel" id="btn-cancel-modal">Cancel</button>
                 <button class="btn-send" id="btn-send-notif">
-                    <i class="ph ph-paper-plane-tilt"></i>
                     Send
                 </button>
             </div>

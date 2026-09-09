@@ -508,29 +508,6 @@ class ProfileFragment : Fragment() {
         dialog.show()
     }
 
-    private fun openEmailIntent() {
-        val emailIntent = Intent(Intent.ACTION_SENDTO).apply {
-            data = android.net.Uri.parse("mailto:carelyohealth@gmail.com")
-            putExtra(Intent.EXTRA_SUBJECT, "Carelyo Support Request")
-            putExtra(Intent.EXTRA_TEXT, """
-            Hello Carelyo Support Team,
-            
-            I need assistance with the following:
-            
-            
-            
-            Best regards,
-            ${sessionManager.getUserSession()?.full_name ?: "User"}
-        """.trimIndent())
-        }
-
-        try {
-            startActivity(Intent.createChooser(emailIntent, "Send email via..."))
-        } catch (e: android.content.ActivityNotFoundException) {
-            Toast.makeText(requireContext(), "No email app found. Please email us at support@carelyo.my", Toast.LENGTH_LONG).show()
-        }
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
         CarelyoMessageBroker.unregisterAgent("ProfileFragment")

@@ -10,11 +10,9 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.example.carelyo.R
 
 class MedicalHistoryDetailsBottomSheet(
-    private val title: String,
-    private val date: String,
-    private val doctor: String,
-    private val clinic: String,
-    private val diagnosis: String,
+    private val conditionName: String,
+    private val diagnosisDate: String,
+    private val treatment: String,
     private val notes: String
 ) : BottomSheetDialogFragment() {
 
@@ -29,24 +27,17 @@ class MedicalHistoryDetailsBottomSheet(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Initialize Views
         val tvTitle = view.findViewById<TextView>(R.id.tvDetailsTitle)
         val tvDate = view.findViewById<TextView>(R.id.tvDetailsDate)
-        val tvDoctor = view.findViewById<TextView>(R.id.tvDetailsDoctor)
-        val tvClinic = view.findViewById<TextView>(R.id.tvDetailsClinic)
         val tvDiagnosis = view.findViewById<TextView>(R.id.tvDetailsDiagnosis)
         val tvNotes = view.findViewById<TextView>(R.id.tvDetailsNotes)
         val ivClose = view.findViewById<ImageView>(R.id.ivCloseDetails)
 
-        // Populate Data
-        tvTitle.text = title
-        tvDate.text = date
-        tvDoctor.text = doctor
-        tvClinic.text = clinic
-        tvDiagnosis.text = diagnosis
-        tvNotes.text = notes
+        tvTitle.text = conditionName
+        tvDate.text = diagnosisDate
+        tvDiagnosis.text = treatment
+        tvNotes.text = notes.ifBlank { "No additional notes" }
 
-        // Close action
         ivClose.setOnClickListener {
             dismiss()
         }

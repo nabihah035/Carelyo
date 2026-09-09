@@ -59,8 +59,9 @@ class MedicalHistoryAdapter(
 
             binding.tvDate.text = date
 
-            binding.tvNotes.text = history.notes ?: "No additional notes"
-            binding.tvNotes.visibility = if (history.notes.isNullOrEmpty()) android.view.View.GONE else android.view.View.VISIBLE
+            val notesText = history.notes
+            binding.tvNotes.text = notesText ?: ""
+            binding.tvNotes.visibility = if (notesText.isNullOrBlank()) android.view.View.GONE else android.view.View.VISIBLE
 
             val childName = binding.root.tag as? String
             if (!childName.isNullOrEmpty()) {
@@ -75,4 +76,4 @@ class MedicalHistoryAdapter(
             }
         }
     }
-}
+}

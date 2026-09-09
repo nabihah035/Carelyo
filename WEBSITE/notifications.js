@@ -71,31 +71,26 @@ async function loadNotifications() {
             // Recipient name from joined USER table
             const recipient = n.USER ? n.USER.full_name : '—';
 
-            // type is stored lowercase in DB; capitalise for display
+            // type: capitalise first letter, display as plain gray text
             const rawType   = (n.type || 'general').toLowerCase();
             const typeLabel = rawType.charAt(0).toUpperCase() + rawType.slice(1);
 
+            // Sent At: "2026-09-05 10:00" (ISO date + HH:MM time)
             const sentAt = n.created_at ? formatDateTime(n.created_at) : '—';
 
-            // is_read is the only status indicator in the schema
+            // Status badges matching reference:
+            //   is_read = true  → "Read"  (gray outline)
+            //   is_read = false → "Sent"  (teal/green filled)
             const statusBadge = n.is_read
-                ? `<span class="badge badge-success">Read</span>`
-                : `<span class="badge badge-primary">Unread</span>`;
-
-            const typeBadgeClass = {
-                'appointment': 'badge-primary',
-                'vaccination': 'badge-purple',
-                'medication':  'badge-warning',
-                'reminder':    'badge-warning',
-                'general':     'badge-primary'
-            }[rawType] || 'badge-primary';
+                ? `<span style="display:inline-block;padding:3px 12px;border-radius:9999px;font-size:12px;font-weight:500;border:1px solid #e2e8f0;color:#64748b;background:#f8fafc;">Read</span>`
+                : `<span style="display:inline-block;padding:3px 12px;border-radius:9999px;font-size:12px;font-weight:500;border:1px solid #bbf7d0;color:#16a34a;background:#f0fdf4;">Sent</span>`;
 
             tableBody.insertAdjacentHTML('beforeend', `
                 <tr>
-                    <td><span class="badge ${typeBadgeClass}">${typeLabel}</span></td>
-                    <td style="font-weight:600;">${recipient}</td>
-                    <td style="color:var(--text-muted);max-width:300px;">${n.message || '—'}</td>
-                    <td style="white-space:nowrap;">${sentAt}</td>
+                    <td style="color:#64748b;font-size:13px;">${typeLabel}</td>
+                    <td style="font-weight:600;color:#111827;">${recipient}</td>
+                    <td style="color:#64748b;font-size:13px;max-width:280px;">${n.message || '—'}</td>
+                    <td style="white-space:nowrap;font-size:12px;color:#94a3b8;">${sentAt}</td>
                     <td>${statusBadge}</td>
                 </tr>
             `);
@@ -265,10 +260,14 @@ function showToast(msg, type = '') {
 }
 
 // ─── Date + time formatter ─────────────────────────────────────────────────
+// Output: "2026-09-05\n10:00"  (stacked, matching reference)
 function formatDateTime(dateString) {
     if (!dateString) return '—';
     const d    = new Date(dateString);
-    const date = d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-    const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-    return `${date} · ${time}`;
+    const yyyy = d.getFullYear();
+    const mm   = String(d.getMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getDate()).padStart(2, '0');
+    const hh   = String(d.getHours()).padStart(2, '0');
+    const min  = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}<br><span style="color:#94a3b8">${hh}:${min}</span>`;
 }

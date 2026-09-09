@@ -5,6 +5,7 @@ import com.example.carelyo.agent.infra.CarelyoMessage
 import com.example.carelyo.agent.infra.CarelyoMessageBroker
 import com.example.carelyo.api.supabase.SupabaseClient
 import com.example.carelyo.data.entity.User
+import com.example.carelyo.data.entity.UserInsert
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,18 +20,23 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
 
     fun registerNewUser(email: String, password: String, fullName: String, phoneNumber: String, role: String) {
         scope.launch(Dispatchers.IO) {
-            println("[$agentName]: Handling secure registration flow for: $email")
+            println("[$agentName]: Registering new user: $email")
             try {
-                val newUser = User(
+                val assignedRole = if (role.equals(
+                        com.example.carelyo.data.entity.UserRole.STAFF.value, ignoreCase = true
+                    )) {
+                    com.example.carelyo.data.entity.UserRole.STAFF.value
+                } else {
+                    com.example.carelyo.data.entity.UserRole.PARENT.value
+                }
+
+                // Use UserInsert (no userid) so PostgreSQL auto-generates the identity column
+                val newUser = UserInsert(
                     email = email,
                     password = password,
                     full_name = fullName,
                     phone_number = phoneNumber,
-                    role = if (role.equals(com.example.carelyo.data.entity.UserRole.STAFF.value, ignoreCase = true)) {
-                        com.example.carelyo.data.entity.UserRole.STAFF.value
-                    } else {
-                        com.example.carelyo.data.entity.UserRole.PARENT.value
-                    }
+                    role = assignedRole
                 )
 
                 val savedUser = SupabaseClient.client.postgrest["USER"]
@@ -46,7 +52,8 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     )
                 )
             } catch (e: Exception) {
-                sendFailureNotification("REGISTRATION_FAILED", e.localizedMessage ?: "Database insertion failure.")
+                println("[$agentName]: Registration error: ${e.localizedMessage}")
+                sendFailureNotification("REGISTRATION_FAILED", e.localizedMessage ?: "Registration failed.")
             }
         }
     }

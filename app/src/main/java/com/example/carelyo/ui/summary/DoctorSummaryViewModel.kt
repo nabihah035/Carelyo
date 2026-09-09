@@ -145,8 +145,6 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
     // Save notes taken from doctor visit with AI summarization using Qwen2.5:3b
     fun saveConsultationNotes(
         childId: Int,
-        doctorName: String,
-        clinicName: String,
         rawNotes: String
     ) {
         _summaryState.value = UiState.Loading("Generating AI summary with Qwen2.5:3b... Please wait.")
@@ -154,13 +152,6 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             val currentDate = dateFormat.format(Date())
             val currentUser = sessionManager.getUserSession()
-
-            val formattedNotes = buildString {
-                if (doctorName.isNotBlank()) append("Doctor: $doctorName\n")
-                if (clinicName.isNotBlank()) append("Clinic: $clinicName\n")
-                if (isNotEmpty() && rawNotes.isNotBlank()) append("\n")
-                append(rawNotes)
-            }.trim()
 
             // 1. Generate summary using Qwen2.5:3b via Ollama
             var aiGeneratedSummary: String? = null
@@ -172,7 +163,7 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
                     )
                     val userPrompt = Message(
                         role = "user",
-                        content = "Please summarize these doctor consultation notes:\n$formattedNotes"
+                        content = "Please summarize these doctor consultation notes:\n$rawNotes"
                     )
 
                     val requestPayload = ChatRequest(
@@ -189,16 +180,15 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
                     response.message.content.trim()
                 }
             } catch (aiEx: Exception) {
-                // LLM generation error or timeout - log and proceed with raw notes so data is not lost
                 aiEx.printStackTrace()
             }
 
-            // 2. Persist to Supabase DOCTOR_VISIT with summary column
+            // 2. Persist to Supabase DOCTOR_VISIT
             try {
                 val newVisit = DoctorVisitInsert(
                     ChildID = childId,
                     visit_date = currentDate,
-                    raw_notes = formattedNotes,
+                    raw_notes = rawNotes,
                     userid = currentUser?.UserID,
                     clinicid = null,
                     summary = aiGeneratedSummary

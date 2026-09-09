@@ -11,8 +11,7 @@ import com.example.carelyo.data.session.SessionManager
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.*
+
 
 class HealthRecordsViewModel(application: Application) : AndroidViewModel(application) {
     private val TAG = "HealthRecordsViewModel"
@@ -50,10 +49,9 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
 
     private var allAllergies: List<Allergie> = emptyList()
     private var allMedicalHistory: List<MedicalHistory> = emptyList()
-    private var allDoctorVisits: List<DoctorVisit> = emptyList()
     private var isLoadingData = false
 
-    private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+
 
     fun loadHealthData() {
         // Prevent multiple simultaneous loads
@@ -105,7 +103,6 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
 
                     allAllergies = allAllergiesList
                     allMedicalHistory = allMedicalHistoryList
-                    allDoctorVisits = allDoctorVisitsList
 
                     _allergies.postValue(allAllergiesList)
                     _filteredAllergies.postValue(allAllergiesList)
@@ -116,6 +113,7 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
                     _childVaccines.postValue(allChildVaccinesList)
 
                     println("[$TAG]: Loaded ${allAllergiesList.size} allergies, ${allMedicalHistoryList.size} medical records, ${allDoctorVisitsList.size} doctor visits, ${allChildVaccinesList.size} vaccines")
+
                 }
 
                 _isLoading.postValue(false)
@@ -279,36 +277,20 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
 
     fun addMedicalRecord(
         childId: Int,
-        doctorName: String,
-        clinicName: String,
-        diagnosis: String,
-        notes: String,
-        recordType: String,
+        conditionName: String,
+        diagnosisDate: String,
+        treatment: String,
+        notes: String?,
         callback: (Boolean) -> Unit
     ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val currentUser = sessionManager.getUserSession()
-                if (currentUser == null) {
-                    kotlinx.coroutines.withContext(Dispatchers.Main) { callback(false) }
-                    return@launch
-                }
-
-                val today = dateFormat.format(Date())
-
-                val formattedNotes = buildString {
-                    if (doctorName.isNotBlank()) append("Doctor: $doctorName\n")
-                    if (clinicName.isNotBlank()) append("Clinic: $clinicName\n")
-                    if (notes.isNotBlank()) append("Notes: $notes\n")
-                }.trim()
-
-                // Insert into MEDICAL_HISTORY table
                 val newMedicalHistory = MedicalHistoryInsert(
                     ChildID = childId,
-                    condition_name = diagnosis,
-                    diagnosis_date = today,
-                    treatment = recordType,
-                    notes = if (formattedNotes.isNotEmpty()) formattedNotes else notes.ifBlank { null }
+                    condition_name = conditionName,
+                    diagnosis_date = diagnosisDate,
+                    treatment = treatment,
+                    notes = notes?.ifBlank { null }
                 )
 
                 println("[$TAG]: Inserting medical history: $newMedicalHistory")
@@ -319,42 +301,9 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
                     .firstOrNull()
 
                 if (historyResult != null) {
-                    // Also insert into DOCTOR_VISIT table for additional details
-                    val combinedNotes = buildString {
-                        if (!doctorName.isNullOrBlank()) append("Doctor: $doctorName\n")
-                        if (!clinicName.isNullOrBlank()) append("Clinic: $clinicName\n")
-                        if (!diagnosis.isNullOrBlank()) append("Diagnosis: $diagnosis\n")
-                        if (!notes.isNullOrBlank()) append("Notes: $notes\n")
-                    }.trim()
-
-                    try {
-                        val newDoctorVisit = DoctorVisitInsert(
-                            ChildID = childId,
-                            visit_date = today,
-                            raw_notes = combinedNotes,
-                            userid = currentUser.UserID
-                        )
-
-                        println("[$TAG]: Inserting doctor visit: $newDoctorVisit")
-
-                        SupabaseClient.client.postgrest["DOCTOR_VISIT"]
-                            .insert(newDoctorVisit) { select() }
-                            .decodeList<DoctorVisit>()
-                            .firstOrNull()
-                    } catch (dve: Exception) {
-                        println("[$TAG]: Non-critical error inserting DOCTOR_VISIT: ${dve.localizedMessage}")
-                    }
-
-                    // Update local lists
                     allMedicalHistory = allMedicalHistory + historyResult
                     _medicalHistory.postValue(allMedicalHistory)
                     _filteredMedicalHistory.postValue(allMedicalHistory)
-
-                    // Refresh doctor visits for this child
-                    val updatedDoctorVisits = fetchDoctorVisits(childId)
-                    allDoctorVisits = allDoctorVisits + updatedDoctorVisits
-                    _doctorVisits.postValue(allDoctorVisits)
-                    _filteredDoctorVisits.postValue(allDoctorVisits)
 
                     println("[$TAG]: Added medical record: ${historyResult.condition_name}")
                     kotlinx.coroutines.withContext(Dispatchers.Main) { callback(true) }
@@ -372,12 +321,6 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
 
     fun getChildName(childId: Int): String? {
         return _childrenList.value?.find { it.ChildID == childId }?.full_name
-    }
-
-    fun getDoctorVisitForHistory(history: MedicalHistory): DoctorVisit? {
-        return allDoctorVisits.find {
-            it.ChildID == history.ChildID && it.visit_date == history.diagnosis_date
-        }
     }
 
     fun clearError() {

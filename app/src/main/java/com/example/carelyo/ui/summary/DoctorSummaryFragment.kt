@@ -165,8 +165,6 @@ class DoctorSummaryFragment : Fragment() {
 
         val btnClose = view.findViewById<View>(R.id.btnClose)
         val spinnerChild = view.findViewById<android.widget.Spinner>(R.id.spinnerChild)
-        val etDoctorName = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etDoctorName)
-        val etClinicName = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etClinicName)
         val btnToggleRecord = view.findViewById<View>(R.id.btnToggleRecord)
         tvRecordHintDialog = view.findViewById(R.id.tvRecordHint)
         tvLivePreviewDialog = view.findViewById(R.id.tvLiveTranscriptionPreview)
@@ -221,9 +219,6 @@ class DoctorSummaryFragment : Fragment() {
         }
 
         btnSaveRecording.setOnClickListener {
-            val doctorName = etDoctorName.text.toString().trim()
-            val clinicName = etClinicName.text.toString().trim()
-
             if (transcribedText.isEmpty()) {
                 Toast.makeText(context, "Please record notes first", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -233,7 +228,7 @@ class DoctorSummaryFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            viewModel.saveConsultationNotes(selectedChildId, doctorName, clinicName, transcribedText)
+            viewModel.saveConsultationNotes(selectedChildId, transcribedText)
             dialog.dismiss()
         }
 
@@ -247,8 +242,6 @@ class DoctorSummaryFragment : Fragment() {
 
         val btnCancelType = view.findViewById<View>(R.id.btnCancelType)
         val spinnerChild = view.findViewById<android.widget.Spinner>(R.id.spinnerChild)
-        val etDocNameInput = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etDocNameInput)
-        val etClinicName = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etClinicName)
         val etRawNotesInput = view.findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.etRawNotesInput)
         val btnGenerateAiSummary = view.findViewById<View>(R.id.btnGenerateAiSummary)
 
@@ -280,8 +273,6 @@ class DoctorSummaryFragment : Fragment() {
         }
 
         btnGenerateAiSummary.setOnClickListener {
-            val doctorName = etDocNameInput.text.toString().trim()
-            val clinicName = etClinicName.text.toString().trim()
             val rawNotes = etRawNotesInput.text.toString().trim()
 
             if (rawNotes.isEmpty()) {
@@ -293,7 +284,7 @@ class DoctorSummaryFragment : Fragment() {
                 return@setOnClickListener
             }
 
-            viewModel.saveConsultationNotes(selectedChildId, doctorName, clinicName, rawNotes)
+            viewModel.saveConsultationNotes(selectedChildId, rawNotes)
             dialog.dismiss()
         }
 
@@ -358,12 +349,12 @@ class DoctorSummaryFragment : Fragment() {
         dialog.setContentView(sheetView)
 
         val title = when {
-            !visit.doctor_name.isNullOrBlank() -> visit.doctor_name
-            visit.raw_notes?.startsWith("Doctor:") == true -> {
+            visit.raw_notes?.trim()?.startsWith("Doctor:", ignoreCase = true) == true -> {
                 visit.raw_notes.lineSequence().firstOrNull()?.removePrefix("Doctor:")?.trim()
             }
             else -> null
         } ?: "Doctor Visit Note"
+
 
         val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
         val formattedDate = visit.visit_date?.let {

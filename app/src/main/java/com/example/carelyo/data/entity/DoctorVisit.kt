@@ -15,9 +15,6 @@ data class DoctorVisit(
     val clinicid: Int? = null,
     val userid: Int? = null,
     val summary: String? = null,
-    // Optional compatibility fields
-    val clinic_name: String? = null,
-    val doctor_name: String? = null,
     val ai_summary: String? = null,
     val summary_language: String? = null
 )

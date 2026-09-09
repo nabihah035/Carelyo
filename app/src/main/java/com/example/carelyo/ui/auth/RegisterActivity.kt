@@ -94,21 +94,29 @@ class RegisterActivity : AppCompatActivity() {
     private fun observeViewModel() {
         viewModel.authState.observe(this) { state ->
             when (state) {
-                is AuthState.Loading -> binding.progressBar.visibility = View.VISIBLE
+                is AuthState.Loading -> {
+                    binding.progressBar.visibility = View.VISIBLE
+                    binding.btnRegister.isEnabled = false
+                    binding.btnRegister.text = "Creating account..."
+                }
                 is AuthState.Success -> {
                     binding.progressBar.visibility = View.GONE
-                    Toast.makeText(this, "Account verified and registered successfully!", Toast.LENGTH_SHORT).show()
+                    binding.btnRegister.isEnabled = true
+                    binding.btnRegister.text = "Create Account"
+                    Toast.makeText(this, "Account created successfully!", Toast.LENGTH_SHORT).show()
                     startActivity(Intent(this, DashboardActivity::class.java))
                     finish()
                 }
                 is AuthState.Error -> {
                     binding.progressBar.visibility = View.GONE
-                    Toast.makeText(this, "Registration Failure: ${state.message}", Toast.LENGTH_LONG).show()
+                    binding.btnRegister.isEnabled = true
+                    binding.btnRegister.text = "Create Account"
+                    Toast.makeText(this, state.message, Toast.LENGTH_LONG).show()
                 }
                 else -> {
-                    // Handle other states (OtpSent, OtpVerified, PasswordResetSuccess) if necessary
-                    // For RegisterActivity, these might not be relevant yet
                     binding.progressBar.visibility = View.GONE
+                    binding.btnRegister.isEnabled = true
+                    binding.btnRegister.text = "Create Account"
                 }
             }
         }

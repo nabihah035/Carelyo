@@ -16,3 +16,17 @@ data class User(
     val updated_at: String? = null,
     val notification_permission: Boolean? = null
 )
+
+/**
+ * Used for INSERT only — omits userid so PostgreSQL auto-generates
+ * the GENERATED ALWAYS AS IDENTITY primary key.
+ */
+@Serializable
+data class UserInsert(
+    val email: String,
+    val password: String,
+    val full_name: String?,
+    val phone_number: String? = null,
+    val role: String? = null,
+    val notification_permission: Boolean? = null
+)

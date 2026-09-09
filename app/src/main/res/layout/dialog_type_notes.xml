@@ -82,17 +82,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/spinnerChild">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etDocNameInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Doctor's name (optional)"
-                android:inputType="textPersonName"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:textColor="#334155"
-                android:textColorHint="#94A3B8"
-                android:textSize="15sp" />
+
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Clinic Name -->
@@ -112,17 +102,6 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/tilDocNameInputType">
 
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/etClinicName"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="Clinic name (optional)"
-                android:inputType="text"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:textColor="#334155"
-                android:textColorHint="#94A3B8"
-                android:textSize="15sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <!-- Notes Input -->

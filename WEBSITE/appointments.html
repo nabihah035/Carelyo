@@ -5,108 +5,342 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Appointments - Carelyo Staff</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* ── Page layout ─────────────────────────────── */
+        .appt-page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        /* ── Date section ────────────────────────────── */
+        .date-section {
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .date-section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 24px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .date-section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .today-badge {
+            background: var(--primary-color);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 9px;
+            border-radius: 9999px;
+        }
+
+        .date-appt-count {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        /* ── Appointment table ───────────────────────── */
+        .appt-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .appt-table th {
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .appt-table td {
+            padding: 13px 16px;
+            font-size: 14px;
+            color: #1f2937;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+
+        .appt-table tbody tr:last-child td { border-bottom: none; }
+        .appt-table tbody tr:hover { background: #f8fafc; }
+
+        .appt-time-col {
+            color: #64748b;
+            font-size: 13px;
+            font-weight: 500;
+            width: 64px;
+        }
+
+        .appt-child-name { font-weight: 600; color: #111827; }
+        .appt-parent-name { color: #4b5563; }
+        .appt-purpose-col { color: #374151; }
+
+        /* ── Status pills ────────────────────────────── */
+        .appt-status-pill {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+            border: 1px solid transparent;
+            white-space: nowrap;
+        }
+
+        .appt-s-scheduled  { background:#f0f9ff; border-color:#bae6fd; color:#0369a1; }
+        .appt-s-completed  { background:#f0fdf4; border-color:#bbf7d0; color:#16a34a; }
+        .appt-s-cancelled  { background:#f8fafc; border-color:#e2e8f0; color:#64748b; }
+        .appt-s-noshow     { background:#fef2f2; border-color:#fecaca; color:#dc2626; }
+        .appt-s-pending    { background:#fffbeb; border-color:#fde68a; color:#d97706; }
+        .appt-s-confirmed  { background:var(--primary-light); border-color:#c7eaf0; color:var(--primary-color); }
+        .appt-s-inprogress { background:#eff6ff; border-color:#bfdbfe; color:#2563eb; }
+
+        /* ── Update dropdown ─────────────────────────── */
+        .update-select {
+            padding: 4px 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            color: #374151;
+            background: #fff;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .update-select:focus { border-color: var(--primary-color); }
+        .update-dash { color: #cbd5e1; font-size: 14px; }
+
+        /* ── Notes button ────────────────────────────── */
+        .notes-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--primary-color);
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            transition: var(--transition);
+        }
+
+        .notes-btn:hover { text-decoration: underline; }
+
+        /* ── Modal overlay ───────────────────────────── */
+        .appt-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .appt-modal-overlay.open { display: flex; }
+
+        .appt-modal-box {
+            background: #fff;
+            border-radius: 12px;
+            width: 480px;
+            max-width: 95vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+
+        .appt-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 24px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .appt-modal-title { font-size: 16px; font-weight: 600; color: #111827; }
+
+        .appt-modal-close {
+            background: none;
+            border: none;
+            font-size: 18px;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 2px;
+            line-height: 1;
+        }
+
+        .appt-modal-close:hover { color: #374151; }
+
+        .appt-modal-body { padding: 20px 24px; }
+
+        .appt-form-row { display: flex; gap: 16px; }
+
+        .appt-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+            margin-bottom: 16px;
+        }
+
+        .appt-form-label { font-size: 13px; font-weight: 500; color: #374151; }
+
+        .appt-form-control {
+            padding: 9px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: var(--font-family);
+            color: #111827;
+            outline: none;
+            transition: border-color 0.15s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .appt-form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0,140,165,0.1);
+        }
+
+        textarea.appt-form-control { resize: vertical; min-height: 90px; }
+
+        .appt-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            padding: 16px 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* ── Notes modal specific ────────────────────── */
+        .notes-existing {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        .notes-existing-meta { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+        .notes-existing-text { font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap; }
+        .notes-add-label { font-size: 13px; font-weight: 500; color: #374151; margin-bottom: 8px; display: block; }
+
+        /* ── Toast ───────────────────────────────────── */
+        #appt-toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+    </style>
 </head>
 <body>
     <main class="main-content">
-        <header class="page-header">
-            <h2 class="page-title">Appointment Management</h2>
-            <button class="btn btn-primary" onclick="openModal()">
-                <i class="ph ph-plus"></i>
-                New Appointment
+        <header class="appt-page-header">
+            <h2 class="page-title">Appointments</h2>
+            <button class="btn btn-primary" id="btn-add-appt">
+                <i class="ph ph-plus"></i> Add Appointment
             </button>
         </header>
 
-        <div class="card mb-6" style="padding: 16px 24px; display: flex; gap: 16px; align-items: center;">
-            <i class="ph ph-funnel" style="color: var(--text-muted); font-size: 20px;"></i>
-            <div class="filter-tabs">
-                <button class="filter-tab active" data-filter="all" id="filter-all">All (0)</button>
-                <button class="filter-tab" data-filter="Scheduled" id="filter-scheduled">Scheduled (0)</button>
-                <button class="filter-tab" data-filter="Completed" id="filter-completed">Completed (0)</button>
-                <button class="filter-tab" data-filter="Cancelled" id="filter-cancelled">Cancelled (0)</button>
-                <button class="filter-tab" data-filter="No-Show" id="filter-noshow">No-Show (0)</button>
-            </div>
-        </div>
-
-        <div id="appointments-container" style="display: flex; flex-direction: column; gap: 16px;">
-            <!-- Data populated by JS -->
-            <div class="card" style="text-align: center;">Loading appointments...</div>
+        <div id="appointments-container">
+            <div style="text-align:center;padding:40px;color:#64748b;">Loading appointments…</div>
         </div>
     </main>
 
-    <!-- Appointment Modal -->
-    <div id="appointment-modal" class="modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-        <div class="modal-content" style="background: white; padding: 24px; border-radius: 8px; width: 500px; max-width: 90%; max-height: 90vh; overflow-y: auto;">
-            <h3 id="modal-title" style="margin-top: 0; margin-bottom: 16px;">New Appointment</h3>
-            <form id="appointment-form">
-                <input type="hidden" id="appt-id">
-                
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Parent *</label>
-                    <select id="appt-parent" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;" onchange="loadChildrenForDropdown()">
-                        <option value="">Select a parent...</option>
+    <!-- ── Add Appointment Modal ──────────────────────────────────── -->
+    <div class="appt-modal-overlay" id="add-appt-modal">
+        <div class="appt-modal-box">
+            <div class="appt-modal-header">
+                <span class="appt-modal-title">New Appointment</span>
+                <button class="appt-modal-close" id="close-add-modal"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="appt-modal-body">
+                <div class="appt-form-row">
+                    <div class="appt-form-group">
+                        <label class="appt-form-label">Date</label>
+                        <input type="date" class="appt-form-control" id="new-appt-date">
+                    </div>
+                    <div class="appt-form-group">
+                        <label class="appt-form-label">Time</label>
+                        <input type="time" class="appt-form-control" id="new-appt-time">
+                    </div>
+                </div>
+                <div class="appt-form-group">
+                    <label class="appt-form-label">Parent / Guardian</label>
+                    <select class="appt-form-control" id="new-appt-parent">
+                        <option value="">Loading parents…</option>
                     </select>
                 </div>
-
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Child *</label>
-                    <select id="appt-child" required disabled style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                        <option value="">Select a parent first...</option>
+                <div class="appt-form-group">
+                    <label class="appt-form-label">Child</label>
+                    <select class="appt-form-control" id="new-appt-child" disabled>
+                        <option value="">Select a parent first…</option>
                     </select>
                 </div>
-
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 4px;">Date *</label>
-                        <input type="date" id="appt-date" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 4px;">Time *</label>
-                        <input type="time" id="appt-time" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                    </div>
+                <div class="appt-form-group">
+                    <label class="appt-form-label">Purpose</label>
+                    <input type="text" class="appt-form-control" id="new-appt-purpose"
+                           placeholder="e.g. Routine Check-up, Vaccination — DTaP">
                 </div>
-
-                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 4px;">Clinic</label>
-                        <input type="text" id="appt-clinic" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="display: block; margin-bottom: 4px;">Doctor</label>
-                        <input type="text" id="appt-doctor" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                    </div>
-                </div>
-
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Purpose</label>
-                    <input type="text" id="appt-purpose" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                </div>
-                
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Status *</label>
-                    <select id="appt-status" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                        <option value="Scheduled">Scheduled</option>
-                        <option value="Completed">Completed</option>
-                        <option value="Cancelled">Cancelled</option>
-                        <option value="No-Show">No-Show</option>
-                    </select>
-                </div>
-
-                <div style="margin-bottom: 16px;">
-                    <label style="display: block; margin-bottom: 4px;">Notes</label>
-                    <textarea id="appt-notes" rows="3" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;"></textarea>
-                </div>
-
-                <div style="display: flex; justify-content: flex-end; gap: 8px;">
-                    <button type="button" class="btn btn-outline" onclick="closeModal()">Close</button>
-                    <button type="submit" class="btn btn-primary" id="save-appt-btn">Save</button>
-                </div>
-            </form>
+            </div>
+            <div class="appt-modal-footer">
+                <button class="btn btn-outline" id="cancel-add-modal">Cancel</button>
+                <button class="btn btn-primary" id="save-add-appt">Add Appointment</button>
+            </div>
         </div>
     </div>
+
+    <!-- ── Notes Modal ───────────────────────────────────────────── -->
+    <div class="appt-modal-overlay" id="notes-modal">
+        <div class="appt-modal-box">
+            <div class="appt-modal-header">
+                <span class="appt-modal-title" id="notes-modal-title">Visit Notes</span>
+                <button class="appt-modal-close" id="close-notes-modal"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="appt-modal-body">
+                <!-- Existing notes rendered here by JS -->
+                <div id="notes-existing-container"></div>
+                <label class="notes-add-label">Add Note</label>
+                <textarea class="appt-form-control" id="notes-textarea"
+                          placeholder="Enter clinical notes or observations…"></textarea>
+            </div>
+            <div class="appt-modal-footer">
+                <button class="btn btn-outline" id="close-notes-footer">Close</button>
+                <button class="btn btn-primary" id="save-notes-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="appt-toast"></div>
 
     <!-- App Scripts -->
     <script src="env.js"></script>

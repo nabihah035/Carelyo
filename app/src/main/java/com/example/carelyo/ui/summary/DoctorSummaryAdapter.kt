@@ -45,13 +45,10 @@ class DoctorSummaryAdapter(
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(visit: DoctorVisit) {
-            val docLine = visit.raw_notes?.lineSequence()?.find { it.trim().startsWith("Doctor:", ignoreCase = true) }
+            val docLine = visit.raw_notes?.lineSequence()
+                ?.find { it.trim().startsWith("Doctor:", ignoreCase = true) }
             val extractedDoctor = docLine?.substringAfter("Doctor:")?.trim()
-            val doctorTitle = when {
-                !visit.doctor_name.isNullOrBlank() -> visit.doctor_name
-                !extractedDoctor.isNullOrBlank() -> extractedDoctor
-                else -> "Doctor Visit"
-            }
+            val doctorTitle = extractedDoctor?.takeIf { it.isNotBlank() } ?: "Doctor Visit"
 
             val childName = visit.ChildID?.let { getChildrenMap()[it] }
             val headerText = if (!childName.isNullOrBlank()) "$childName • $doctorTitle" else doctorTitle

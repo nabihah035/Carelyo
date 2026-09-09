@@ -37,10 +37,10 @@ class HealthRecordsFragment : Fragment() {
     private lateinit var allergyAdapter: AllergyAdapter
     private lateinit var medicalHistoryAdapter: MedicalHistoryAdapter
 
-    // Track selected buttons
+    // Track selected buttons for allergy dialog
     private var selectedTypeButton: MaterialButton? = null
     private var selectedSeverityButton: MaterialButton? = null
-    private var selectedRecordTypeButton: MaterialButton? = null
+
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -193,17 +193,7 @@ class HealthRecordsFragment : Fragment() {
         }
     }
 
-    private fun setupRecordTypeButtonSelection(button: MaterialButton, buttons: List<MaterialButton>) {
-        button.setOnClickListener {
-            buttons.forEach { btn ->
-                btn.backgroundTintList = ContextCompat.getColorStateList(requireContext(), R.color.button_unselected)
-                btn.setTextColor(ContextCompat.getColor(requireContext(), R.color.button_text_unselected))
-            }
-            button.backgroundTintList = ContextCompat.getColorStateList(requireContext(), R.color.button_selected)
-            button.setTextColor(ContextCompat.getColor(requireContext(), R.color.button_text_selected))
-            selectedRecordTypeButton = button
-        }
-    }
+
 
     private fun showAddAllergyDialog() {
         val dialog = Dialog(requireContext())
@@ -364,19 +354,26 @@ class HealthRecordsFragment : Fragment() {
             dialogBinding.actvChooseChild.tag = children[0]
         }
 
-        // Setup record type buttons
-        val recordTypeButtons = listOf(
-            dialogBinding.btnConsultation,
-            dialogBinding.btnCheckup,
-            dialogBinding.btnVaccination,
-            dialogBinding.btnEmergency
-        )
-        dialogBinding.btnConsultation.backgroundTintList = ContextCompat.getColorStateList(requireContext(), R.color.button_selected)
-        dialogBinding.btnConsultation.setTextColor(ContextCompat.getColor(requireContext(), R.color.button_text_selected))
-        selectedRecordTypeButton = dialogBinding.btnConsultation
+        // Track selected diagnosis date
+        var selectedDate: String? = null
 
-        recordTypeButtons.forEach { button ->
-            setupRecordTypeButtonSelection(button, recordTypeButtons)
+        dialogBinding.btnDatePickerContainer.setOnClickListener {
+            val calendar = java.util.Calendar.getInstance()
+            android.app.DatePickerDialog(
+                requireContext(),
+                { _, year, month, dayOfMonth ->
+                    val formatted = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth)
+                    selectedDate = formatted
+                    val display = String.format("%02d/%02d/%04d", dayOfMonth, month + 1, year)
+                    dialogBinding.tvSelectedDate.text = display
+                    dialogBinding.tvSelectedDate.setTextColor(
+                        ContextCompat.getColor(requireContext(), android.R.color.black)
+                    )
+                },
+                calendar.get(java.util.Calendar.YEAR),
+                calendar.get(java.util.Calendar.MONTH),
+                calendar.get(java.util.Calendar.DAY_OF_MONTH)
+            ).show()
         }
 
         dialogBinding.ivClose.setOnClickListener {
@@ -385,31 +382,27 @@ class HealthRecordsFragment : Fragment() {
 
         dialogBinding.btnSaveRecord.setOnClickListener {
             val selectedChild = dialogBinding.actvChooseChild.tag as? Child
-            val doctorName = dialogBinding.etDoctorName.text.toString().trim()
-            val clinicHospital = dialogBinding.etClinicHospital.text.toString().trim()
-            val diagnosis = dialogBinding.etDiagnosis.text.toString().trim()
+            val conditionName = dialogBinding.etDiagnosis.text.toString().trim()
+            val treatment = dialogBinding.etClinicHospital.text.toString().trim()
             val notes = dialogBinding.etNotesPrescriptions.text.toString().trim()
-
-            val recordType = when (selectedRecordTypeButton?.id) {
-                dialogBinding.btnConsultation.id -> "Consultation"
-                dialogBinding.btnCheckup.id -> "Checkup"
-                dialogBinding.btnVaccination.id -> "Vaccination"
-                dialogBinding.btnEmergency.id -> "Emergency"
-                else -> "Consultation"
-            }
 
             if (selectedChild == null) {
                 Toast.makeText(requireContext(), "Please select a child", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            if (doctorName.isEmpty()) {
-                Toast.makeText(requireContext(), "Please enter doctor name", Toast.LENGTH_SHORT).show()
+            if (conditionName.isEmpty()) {
+                Toast.makeText(requireContext(), "Please enter the condition name", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            if (diagnosis.isEmpty()) {
-                Toast.makeText(requireContext(), "Please enter diagnosis", Toast.LENGTH_SHORT).show()
+            if (selectedDate == null) {
+                Toast.makeText(requireContext(), "Please select a diagnosis date", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            if (treatment.isEmpty()) {
+                Toast.makeText(requireContext(), "Please enter the treatment", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -418,11 +411,10 @@ class HealthRecordsFragment : Fragment() {
 
             viewModel.addMedicalRecord(
                 childId = selectedChild.ChildID,
-                doctorName = doctorName,
-                clinicName = clinicHospital,
-                diagnosis = diagnosis,
-                notes = notes,
-                recordType = recordType
+                conditionName = conditionName,
+                diagnosisDate = selectedDate!!,
+                treatment = treatment,
+                notes = notes.ifBlank { null }
             ) { success ->
                 dialogBinding.btnSaveRecord.isEnabled = true
                 dialogBinding.btnSaveRecord.text = "✓ Save Record"
@@ -438,6 +430,7 @@ class HealthRecordsFragment : Fragment() {
 
         dialog.show()
     }
+
 
     private fun showDeleteConfirmation(allergy: Allergie) {
         val dialogView = layoutInflater.inflate(R.layout.warning_allergy, null)
@@ -469,34 +462,16 @@ class HealthRecordsFragment : Fragment() {
 
     private fun showMedicalHistoryDetails(history: MedicalHistory) {
         try {
-            val childName = viewModel.getChildName(history.ChildID) ?: "Unknown Child"
-            val doctorVisit = viewModel.getDoctorVisitForHistory(history)
-
             val conditionName = history.condition_name ?: "Medical Record"
-            val diagnosisDate = history.diagnosis_date ?: "Date not recorded"
+            val diagnosisDate = history.diagnosis_date?.let { rawDate ->
+                try {
+                    val inputFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                    val outputFormat = java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                    inputFormat.parse(rawDate)?.let { outputFormat.format(it) } ?: rawDate
+                } catch (e: Exception) { rawDate }
+            } ?: "Date not recorded"
             val treatment = history.treatment ?: "Not specified"
-
-            // Extract doctor and clinic if embedded in notes or from linked visit
-            val notesContent = history.notes ?: ""
-            val docFromNotes = notesContent.lineSequence()
-                .find { it.trim().startsWith("Doctor:", ignoreCase = true) }
-                ?.substringAfter("Doctor:")?.trim()
-            val clinicFromNotes = notesContent.lineSequence()
-                .find { it.trim().startsWith("Clinic:", ignoreCase = true) }
-                ?.substringAfter("Clinic:")?.trim()
-            val cleanNotes = notesContent.lineSequence()
-                .filterNot { it.trim().startsWith("Doctor:", ignoreCase = true) || it.trim().startsWith("Clinic:", ignoreCase = true) }
-                .joinToString("\n")
-                .removePrefix("Notes:")
-                .trim()
-
-            val doctorName = docFromNotes?.takeIf { it.isNotBlank() }
-                ?: doctorVisit?.doctor_name
-                ?: "Not recorded"
-            val clinicName = clinicFromNotes?.takeIf { it.isNotBlank() }
-                ?: doctorVisit?.clinic_name
-                ?: "Not recorded"
-            val displayNotes = cleanNotes.ifBlank { notesContent.ifBlank { "No additional notes available." } }
+            val notes = history.notes?.ifBlank { null } ?: "No additional notes"
 
             val bottomSheetDialog = BottomSheetDialog(requireContext())
             val sheetBinding = DialogMedicalHistoryDetailsBinding.inflate(
@@ -504,12 +479,10 @@ class HealthRecordsFragment : Fragment() {
             )
             bottomSheetDialog.setContentView(sheetBinding.root)
 
-            sheetBinding.tvDetailsTitle.text = treatment
+            sheetBinding.tvDetailsTitle.text = conditionName
             sheetBinding.tvDetailsDate.text = diagnosisDate
-            sheetBinding.tvDetailsDoctor.text = doctorName
-            sheetBinding.tvDetailsClinic.text = clinicName
-            sheetBinding.tvDetailsDiagnosis.text = conditionName
-            sheetBinding.tvDetailsNotes.text = displayNotes
+            sheetBinding.tvDetailsDiagnosis.text = treatment
+            sheetBinding.tvDetailsNotes.text = notes
 
             sheetBinding.ivCloseDetails.setOnClickListener {
                 bottomSheetDialog.dismiss()
@@ -521,6 +494,7 @@ class HealthRecordsFragment : Fragment() {
             Toast.makeText(requireContext(), "Error showing details: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
+
 
     private fun updateEmptyState() {
         val allergiesEmpty = (viewModel.filteredAllergies.value ?: emptyList()).isEmpty()

@@ -15,9 +15,6 @@ import com.example.carelyo.R
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.entity.ChildVaccine
 import com.example.carelyo.data.entity.Vaccination
-import com.example.carelyo.databinding.DialogAddChildVaccineBinding
-import com.example.carelyo.databinding.DialogAddVaccineBinding
-import com.example.carelyo.databinding.DialogChooseVaccineBinding
 import com.example.carelyo.databinding.DialogMarkVaccineTakenBinding
 import com.example.carelyo.databinding.DialogViewVaccineDetailBinding
 import com.example.carelyo.databinding.FragmentVaccinesBinding
@@ -29,16 +26,15 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+
+
 class VaccinesFragment : Fragment() {
 
     private var _binding: FragmentVaccinesBinding? = null
     private val binding get() = _binding!!
     private val viewModel: VaccineViewModel by viewModels()
     private lateinit var groupAdapter: ChildVaccineGroupAdapter
-    private var selectedChild: Child? = null
-    private var selectedVaccine: Vaccination? = null
-    private var selectedDate: String? = null
-    private var selectedTime: String? = null
+
 
     private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
     private val dbDateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -131,323 +127,9 @@ class VaccinesFragment : Fragment() {
         groupAdapter.submitList(state.childGroups)
     }
 
-    // ── Step 1: Select Child ────────────────────────────────────────────
-    private fun showChildSelectionDialog() {
-        val children = viewModel.children.value ?: emptyList()
-        if (children.isEmpty()) {
-            Toast.makeText(requireContext(), "No children available. Please add a child first.", Toast.LENGTH_LONG).show()
-            return
-        }
-
-        val dialog = BottomSheetDialog(requireContext())
-        val binding = DialogAddChildVaccineBinding.inflate(LayoutInflater.from(requireContext()))
-        dialog.setContentView(binding.root)
-
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            setLayout(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            )
-        }
-
-        var tempSelectedChild: Child? = null
-
-        val adapter = ChildSelectionAdapter(children, ::calculateAge) { child ->
-            tempSelectedChild = child
-        }
-        binding.rvChildrenSelection.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            this.adapter = adapter
-        }
-
-        binding.btnDialogClose.setOnClickListener {
-            dialog.dismiss()
-        }
-
-        binding.btnContinue.setOnClickListener {
-            if (tempSelectedChild == null) {
-                Toast.makeText(requireContext(), "Please select a child", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            selectedChild = tempSelectedChild
-            dialog.dismiss()
-            showVaccineSelectionDialog()
-        }
-
-        dialog.show()
-    }
-
-    // ── Step 2: Select Vaccine ──────────────────────────────────────────
-    private fun showVaccineSelectionDialog() {
-        val dialog = BottomSheetDialog(requireContext())
-        val binding = DialogChooseVaccineBinding.inflate(LayoutInflater.from(requireContext()))
-        dialog.setContentView(binding.root)
-
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            setLayout(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            )
-        }
-
-        // Set child name
-        val child = selectedChild
-        if (child != null) {
-            val emoji = if (child.gender == "Female") "👧" else "👦"
-            binding.tvChildEmoji.text = emoji
-            binding.tvChildNameSubtitle.text = child.full_name ?: "Unknown"
-        }
-
-        // Get already taken vaccine IDs for this child
-        val takenVaccineIds = viewModel.getTakenVaccineIdsForChild(child?.ChildID ?: 0)
-
-        // Setup vaccine list adapter - filter out already taken vaccines
-        val allVaccines = viewModel.availableVaccines.value ?: emptyList()
-        val availableVaccines = allVaccines.filter {
-            takenVaccineIds?.contains(it.VaccineID) != true
-        }
-
-        if (availableVaccines.isEmpty()) {
-            Toast.makeText(requireContext(), "All vaccines have been taken for this child", Toast.LENGTH_SHORT).show()
-            dialog.dismiss()
-            return
-        }
-
-        val vaccineAdapter = VaccineSelectionAdapter(availableVaccines) { vaccine ->
-            selectedVaccine = vaccine
-            dialog.dismiss()
-            showAddVaccineDetailsDialog()
-        }
-        binding.rvVaccineSelection.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = vaccineAdapter
-        }
-
-        // Search functionality
-        binding.etSearchVaccine.addTextChangedListener(object : android.text.TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            override fun afterTextChanged(s: android.text.Editable?) {
-                vaccineAdapter.filter(s.toString())
-            }
-        })
-
-        binding.btnBack.setOnClickListener {
-            dialog.dismiss()
-            showChildSelectionDialog()
-        }
-
-        dialog.show()
-    }
-
-    // ── Step 3: Add Vaccine Details (Date) ─────────────────────────────
-    private fun showAddVaccineDetailsDialog() {
-        if (selectedVaccine == null) {
-            Toast.makeText(requireContext(), "Please select a vaccine first", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val dialog = BottomSheetDialog(requireContext())
-        val binding = DialogAddVaccineBinding.inflate(LayoutInflater.from(requireContext()))
-        dialog.setContentView(binding.root)
-
-        dialog.window?.apply {
-            setBackgroundDrawableResource(android.R.color.transparent)
-            setLayout(
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            )
-        }
-
-        // Set vaccine info
-        val vaccine = selectedVaccine!!
-        binding.tvVaccineTitle.text = vaccine.vaccine_name ?: "Unknown Vaccine"
-        binding.tvVaccineLongDescription.text = vaccine.description ?: "No description available"
-
-        // Set child info
-        val child = selectedChild
-        if (child != null) {
-            val emoji = if (child.gender == "Female") "👧" else "👦"
-            binding.tvChildEmoji.text = "$emoji "
-            val recommendedText = vaccine.recommended_age_weeks?.let { weeks ->
-                when {
-                    weeks <= 4 -> "Recommended: At birth"
-                    weeks <= 12 -> "Recommended: $weeks weeks (${weeks / 4} months)"
-                    else -> "Recommended: ${weeks / 4} months"
-                }
-            } ?: ""
-            binding.tvSubtitleDetails.text = "${child.full_name ?: "Unknown"} · $recommendedText"
-        }
-
-        // Setup status spinner with fixed database enums
-        val statusSpinner = dialog.findViewById<android.widget.Spinner>(R.id.spinnerStatus)
-        if (statusSpinner != null) {
-            val statusOptions = arrayOf(
-                com.example.carelyo.data.entity.VaccineStatusEnum.COMPLETED.value,
-                com.example.carelyo.data.entity.VaccineStatusEnum.SCHEDULED.value,
-                com.example.carelyo.data.entity.VaccineStatusEnum.DUE.value,
-                com.example.carelyo.data.entity.VaccineStatusEnum.OVERDUE.value,
-                com.example.carelyo.data.entity.VaccineStatusEnum.SKIPPED.value
-            )
-            val adapter = android.widget.ArrayAdapter(
-                requireContext(),
-                android.R.layout.simple_spinner_item,
-                statusOptions
-            )
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-            statusSpinner.adapter = adapter
-        }
-
-        // Setup date picker
-        binding.btnDatePickerContainer.setOnClickListener {
-            showDatePickerDialog { date ->
-                selectedDate = date
-                binding.tvSelectedDate.text = date
-                binding.tvSelectedDate.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
-            }
-        }
-
-        // Setup time picker
-        binding.btnTimePickerContainer.setOnClickListener {
-            showTimePickerDialog { time ->
-                selectedTime = time
-                binding.tvSelectedTime.text = time
-                binding.tvSelectedTime.setTextColor(ContextCompat.getColor(requireContext(), android.R.color.black))
-            }
-        }
-
-        // Back button - go back to vaccine selection
-        binding.btnBackToVaccines.setOnClickListener {
-            dialog.dismiss()
-            showVaccineSelectionDialog()
-        }
-
-        binding.btnSaveRecord.setOnClickListener {
-            saveVaccineRecord(dialog)
-        }
-
-        dialog.show()
-    }
-
-    private fun showDatePickerDialog(onDateSelected: (String) -> Unit) {
-        val datePicker = android.app.DatePickerDialog(
-            requireContext(),
-            { _, year, month, dayOfMonth ->
-                val date = LocalDate.of(year, month + 1, dayOfMonth)
-                val formattedDate = date.format(dateFormatter)
-                onDateSelected(formattedDate)
-            },
-            LocalDate.now().year,
-            LocalDate.now().monthValue - 1,
-            LocalDate.now().dayOfMonth
-        )
-        datePicker.show()
-    }
-
-    private fun showTimePickerDialog(onTimeSelected: (String) -> Unit) {
-        val timePicker = android.app.TimePickerDialog(
-            requireContext(),
-            { _, hourOfDay, minute ->
-                val time = java.time.LocalTime.of(hourOfDay, minute)
-                val formattedTime = time.format(timeFormatter)
-                onTimeSelected(formattedTime)
-            },
-            java.time.LocalTime.now().hour,
-            java.time.LocalTime.now().minute,
-            true
-        )
-        timePicker.show()
-    }
-
-    private fun saveVaccineRecord(dialog: BottomSheetDialog) {
-        val child = selectedChild
-        val vaccine = selectedVaccine
-
-        if (child == null) {
-            Toast.makeText(requireContext(), "Please select a child", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (vaccine == null) {
-            Toast.makeText(requireContext(), "Please select a vaccine", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (selectedDate == null) {
-            Toast.makeText(requireContext(), "Please select a date", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (selectedTime == null) {
-            Toast.makeText(requireContext(), "Please select a time", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val date = try {
-            LocalDate.parse(selectedDate, dateFormatter)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Invalid date format", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val time = try {
-            java.time.LocalTime.parse(selectedTime, timeFormatter)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Invalid time format", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        val dateTime = java.time.LocalDateTime.of(date, time)
-        val zonedDateTime = dateTime.atZone(java.time.ZoneId.systemDefault())
-
-        // Get status
-        val statusSpinner = dialog.findViewById<android.widget.Spinner>(R.id.spinnerStatus)
-        val selectedStatus = statusSpinner?.selectedItem?.toString()
-            ?: com.example.carelyo.data.entity.VaccineStatusEnum.COMPLETED.value
-
-        if (selectedStatus == com.example.carelyo.data.entity.VaccineStatusEnum.SCHEDULED.value ||
-            selectedStatus == com.example.carelyo.data.entity.VaccineStatusEnum.DUE.value) {
-            if (dateTime.isBefore(java.time.LocalDateTime.now())) {
-                Toast.makeText(requireContext(), "Scheduled vaccine must be set to a future time", Toast.LENGTH_SHORT).show()
-                return
-            }
-        }
-
-        // Get notes
-        val notesEditText = dialog.findViewById<android.widget.EditText>(R.id.etVaccineNotes)
-        val notes = notesEditText?.text?.toString() ?: ""
-
-        val childVaccine = ChildVaccine(
-            ChildID = child.ChildID,
-            VaccineID = vaccine.VaccineID,
-            status = selectedStatus,
-            administered_date = date.format(dbDateFormatter),
-            administered_at = zonedDateTime.format(dbDateTimeFormatter),
-            notes = notes
-        )
-
-        viewModel.addChildVaccine(childVaccine)
-
-        Toast.makeText(requireContext(), "Vaccine record saved successfully!", Toast.LENGTH_SHORT).show()
-        dialog.dismiss()
-
-        // Refresh data
-        val sessionManager = com.example.carelyo.data.session.SessionManager(requireContext())
-        val user = sessionManager.getUserSession()
-        user?.let {
-            viewModel.requestVaccinationData(it.UserID)
-        }
-
-        // Reset selected values
-        selectedDate = null
-        selectedTime = null
-        selectedVaccine = null
-        selectedChild = null
-    }
 
     // ── View Vaccine Detail with Mark as Taken ─────────────────────────
+
     private fun showVaccineDetailDialog(item: VaccineScheduleItem) {
         val dialog = BottomSheetDialog(requireContext())
         val binding = DialogViewVaccineDetailBinding.inflate(LayoutInflater.from(requireContext()))
@@ -575,18 +257,13 @@ class VaccinesFragment : Fragment() {
             timePicker.show()
         }
 
-        // Setup Clinic Spinner
-        val defaultClinics = listOf(
-            "Sunway Medical Centre",
-            "Gleneagles Hospital Kuala Lumpur",
-            "KPJ Healthcare Damansara Specialist Hospital"
-        )
-        val fetchedClinics = viewModel.clinics.value?.map { it.clinic_name }?.filter { it.isNotBlank() } ?: emptyList()
-        val clinicNames = if (fetchedClinics.isNotEmpty()) fetchedClinics else defaultClinics
+        // Setup Clinic Spinner — only show clinics from the database
+        val fetchedClinics = viewModel.clinics.value
+            ?.mapNotNull { it.clinic_name?.takeIf { name -> name.isNotBlank() } }
+            ?: emptyList()
 
         val clinicOptions = mutableListOf("Select Clinic / Hospital (Optional)")
-        clinicOptions.addAll(clinicNames)
-        clinicOptions.add("Other / Custom Clinic")
+        clinicOptions.addAll(fetchedClinics)
 
         val spinnerAdapter = android.widget.ArrayAdapter(
             requireContext(),
@@ -596,25 +273,10 @@ class VaccinesFragment : Fragment() {
         spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerClinic.adapter = spinnerAdapter
 
-        binding.spinnerClinic.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (position == clinicOptions.size - 1) { // "Other / Custom Clinic"
-                    binding.tilCustomClinic.visibility = View.VISIBLE
-                } else {
-                    binding.tilCustomClinic.visibility = View.GONE
-                }
-            }
-
-            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
-        }
-
         binding.btnConfirmMarkTaken.setOnClickListener {
-            val chosenClinic = if (binding.tilCustomClinic.visibility == View.VISIBLE &&
-                !binding.etCustomClinic.text.isNullOrBlank()) {
-                binding.etCustomClinic.text.toString().trim()
-            } else if (binding.spinnerClinic.selectedItemPosition > 0 &&
-                binding.spinnerClinic.selectedItemPosition < clinicOptions.size - 1) {
-                clinicOptions[binding.spinnerClinic.selectedItemPosition]
+            val selectedPosition = binding.spinnerClinic.selectedItemPosition
+            val chosenClinic = if (selectedPosition > 0) {
+                clinicOptions[selectedPosition]
             } else {
                 null
             }
@@ -642,6 +304,7 @@ class VaccinesFragment : Fragment() {
 
         dialog.show()
     }
+
 
     private fun calculateAge(dateOfBirth: String): String {
         return try {
