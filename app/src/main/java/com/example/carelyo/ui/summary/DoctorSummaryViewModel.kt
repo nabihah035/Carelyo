@@ -3,22 +3,27 @@ package com.example.carelyo.ui.summary
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.carelyo.api.chat.ChatRequest
+import com.example.carelyo.api.chat.Message
+import com.example.carelyo.api.chat.NetworkClient
 import com.example.carelyo.api.supabase.SupabaseClient
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.entity.DoctorVisit
 import com.example.carelyo.data.entity.DoctorVisitInsert
 import com.example.carelyo.data.session.SessionManager
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 sealed class UiState<out T> {
     object Idle : UiState<Nothing>()
-    object Loading : UiState<Nothing>()
+    data class Loading(val message: String = "Processing...") : UiState<Nothing>()
     data class Success<out T>(val data: T) : UiState<T>()
     data class Error(val message: String) : UiState<Nothing>()
 }
@@ -71,6 +76,8 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
 
                 if (children.isNotEmpty()) {
                     loadDoctorVisitsForChildren(children.map { it.ChildID })
+                } else {
+                    loadDoctorVisitsForChildren(emptyList())
                 }
             } catch (e: Exception) {
                 _isLoading.value = false
@@ -91,7 +98,7 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
     private fun loadDoctorVisitsForChildren(childIds: List<Int>) {
         viewModelScope.launch {
             try {
-                val allVisits = mutableListOf<DoctorVisit>()
+                val allVisits = mutableMapOf<Int, DoctorVisit>()
 
                 for (childId in childIds) {
                     try {
@@ -103,51 +110,111 @@ class DoctorSummaryViewModel(application: Application) : AndroidViewModel(applic
                             }
                             .decodeList<DoctorVisit>()
 
-                        allVisits.addAll(visits)
+                        visits.forEach { allVisits[it.DocVisitID] = it }
                     } catch (e: Exception) {
-                        // Skip if one fails
+                        // Skip individual errors
                     }
                 }
 
-                allVisits.sortByDescending { it.visit_date }
-                _doctorVisits.value = allVisits
+                // Also load visits recorded by current user
+                val currentUser = sessionManager.getUserSession()
+                if (currentUser != null) {
+                    try {
+                        val userVisits = SupabaseClient.client.postgrest["DOCTOR_VISIT"]
+                            .select {
+                                filter {
+                                    eq("userid", currentUser.UserID)
+                                }
+                            }
+                            .decodeList<DoctorVisit>()
+
+                        userVisits.forEach { allVisits[it.DocVisitID] = it }
+                    } catch (e: Exception) {
+                        // Skip
+                    }
+                }
+
+                val sortedList = allVisits.values.sortedByDescending { it.visit_date ?: it.created_at }
+                _doctorVisits.value = sortedList
             } catch (e: Exception) {
                 _errorMessage.value = "Failed to load doctor visits: ${e.localizedMessage}"
             }
         }
     }
 
-    // Direct save without Gemini API calls
+    // Save notes taken from doctor visit with AI summarization using Qwen2.5:3b
     fun saveConsultationNotes(
         childId: Int,
         doctorName: String,
         clinicName: String,
         rawNotes: String
     ) {
-        _summaryState.value = UiState.Loading
+        _summaryState.value = UiState.Loading("Generating AI summary with Qwen2.5:3b... This may take up to a minute.")
 
         viewModelScope.launch {
-            try {
-                val currentDate = dateFormat.format(Date())
+            val currentDate = dateFormat.format(Date())
+            val currentUser = sessionManager.getUserSession()
 
+            val formattedNotes = buildString {
+                if (doctorName.isNotBlank()) append("Doctor: $doctorName\n")
+                if (clinicName.isNotBlank()) append("Clinic: $clinicName\n")
+                if (isNotEmpty() && rawNotes.isNotBlank()) append("\n")
+                append(rawNotes)
+            }.trim()
+
+            // 1. Generate summary using Qwen2.5:3b via Ollama
+            var aiGeneratedSummary: String? = null
+            try {
+                aiGeneratedSummary = withContext(Dispatchers.IO) {
+                    val systemPrompt = Message(
+                        role = "system",
+                        content = "You are Carelyo's Clinical Pediatric Assistant. Summarize the following doctor visit notes concisely for the child's parents. Use bullet points under clear headings: 1. Diagnosis / Findings, 2. Treatment & Instructions, 3. Prescribed Medications (if any), 4. Follow-up / Red Flags. Do not use bold markdown tags like ** **. Keep it clear, concise, and easy to read. Do not use emojis."
+                    )
+                    val userPrompt = Message(
+                        role = "user",
+                        content = "Please summarize these doctor consultation notes:\n$formattedNotes"
+                    )
+
+                    val requestPayload = ChatRequest(
+                        model = "qwen2.5:3b",
+                        messages = listOf(systemPrompt, userPrompt),
+                        stream = false,
+                        options = mapOf("num_predict" to 300)
+                    )
+
+                    val response = NetworkClient.ollamaApi.sendChatMessage(requestPayload)
+                    response.message.content.trim()
+                }
+            } catch (aiEx: Exception) {
+                // LLM generation error or timeout - log and proceed with raw notes so data is not lost
+                aiEx.printStackTrace()
+            }
+
+            // 2. Persist to Supabase DOCTOR_VISIT with summary column
+            try {
                 val newVisit = DoctorVisitInsert(
                     ChildID = childId,
                     visit_date = currentDate,
-                    clinic_name = clinicName,
-                    doctor_name = doctorName,
-                    raw_notes = rawNotes,
-                    ai_summary = rawNotes, // Storing raw notes directly into summary field
-                    summary_language = "ms-MY"
+                    raw_notes = formattedNotes,
+                    userid = currentUser?.UserID,
+                    clinicid = null,
+                    summary = aiGeneratedSummary
                 )
 
-                val result = SupabaseClient.client.postgrest["DOCTOR_VISIT"]
-                    .insert(newVisit) { select() }
-                    .decodeSingle<DoctorVisit>()
+                withContext(Dispatchers.IO) {
+                    SupabaseClient.client.postgrest["DOCTOR_VISIT"]
+                        .insert(newVisit) { select() }
+                        .decodeSingle<DoctorVisit>()
+                }
 
                 loadDoctorVisits()
-                _summaryState.value = UiState.Success("Saved successfully")
-            } catch (e: Exception) {
-                _summaryState.value = UiState.Error("Error: ${e.localizedMessage}")
+                if (aiGeneratedSummary != null) {
+                    _summaryState.value = UiState.Success("Note & AI Summary saved successfully")
+                } else {
+                    _summaryState.value = UiState.Success("Note saved (AI summary timed out)")
+                }
+            } catch (dbEx: Exception) {
+                _summaryState.value = UiState.Error("Failed to save doctor note: ${dbEx.localizedMessage}")
             }
         }
     }

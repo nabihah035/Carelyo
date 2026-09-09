@@ -56,14 +56,14 @@ class ReminderActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         adapter = ReminderAdapter(
-            onDismissClick = { reminder ->
-                showDeleteWarningDialog(reminder)
+            onDismissClick = { notification ->
+                showDeleteWarningDialog(notification)
             },
-            onItemClick = { reminder ->
+            onItemClick = { notification ->
                 // Optional: Handle item click to view details
             },
-            onMarkAsReadClick = { reminder ->
-                viewModel.markAsRead(reminder)
+            onMarkAsReadClick = { notification ->
+                viewModel.markAsRead(notification)
             }
         )
         binding.rvReminders.apply {
@@ -91,18 +91,13 @@ class ReminderActivity : AppCompatActivity() {
             finish()
         }
 
-        // Mark all as read button
-        binding.btnMarkAllRead.setOnClickListener {
-            viewModel.markAllAsRead()
-        }
-
         // Add Medication button
         binding.btnAddMedication.setOnClickListener {
             showAddMedicationDialog()
         }
     }
 
-    private fun showDeleteWarningDialog(reminder: Reminder) {
+    private fun showDeleteWarningDialog(notification: com.example.carelyo.data.entity.Notification) {
         val dialogView = layoutInflater.inflate(R.layout.warning_delete, null)
         val dialog = android.app.Dialog(this)
         dialog.setContentView(dialogView)
@@ -119,7 +114,7 @@ class ReminderActivity : AppCompatActivity() {
         }
 
         btnConfirm.setOnClickListener {
-            viewModel.deleteReminder(reminder)
+            viewModel.deleteNotification(notification)
             dialog.dismiss()
         }
 
@@ -127,10 +122,10 @@ class ReminderActivity : AppCompatActivity() {
     }
 
     private fun observeViewModel() {
-        // Observe reminders list
-        viewModel.reminders.observe(this) { reminders ->
-            adapter.submitList(reminders)
-            updateEmptyState(reminders.isEmpty())
+        // Observe notifications list
+        viewModel.notifications.observe(this) { notifications ->
+            adapter.submitList(notifications)
+            updateEmptyState(notifications.isEmpty())
         }
 
         // Observe unread count

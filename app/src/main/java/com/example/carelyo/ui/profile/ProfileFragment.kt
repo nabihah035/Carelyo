@@ -19,6 +19,7 @@ import com.example.carelyo.databinding.DialogAddChildBinding
 import com.example.carelyo.databinding.DialogHelpSupportBinding
 import com.example.carelyo.databinding.FragmentProfileBinding
 import com.example.carelyo.ui.auth.LoginActivity
+import com.example.carelyo.ui.dashboard.DashboardActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -183,7 +184,12 @@ class ProfileFragment : Fragment() {
         val btnCancel = dialogView.findViewById<View>(R.id.btnCancel)
 
         val prefs = requireContext().getSharedPreferences("carelyo_prefs", android.content.Context.MODE_PRIVATE)
-        val isNotificationsEnabled = prefs.getBoolean("notifications_enabled", true)
+        val user = sessionManager.getUserSession()
+        val isNotificationsEnabled = if (user?.notification_permission != null) {
+            user.notification_permission
+        } else {
+            prefs.getBoolean("notifications_enabled", true)
+        }
         switchNotifications?.isChecked = isNotificationsEnabled
 
         notificationDialog = MaterialAlertDialogBuilder(requireContext())
@@ -200,8 +206,13 @@ class ProfileFragment : Fragment() {
         switchNotifications?.setOnCheckedChangeListener { _, isChecked ->
             prefs.edit().putBoolean("notifications_enabled", isChecked).apply()
 
-            val user = sessionManager.getUserSession()
-            if (user != null) {
+            // Directly trigger DashboardActivity to update the red dot badge on the notification bell
+            (activity as? DashboardActivity)?.updateBadgeVisibility()
+
+            val currentUser = sessionManager.getUserSession()
+            if (currentUser != null) {
+                sessionManager.saveUserSession(currentUser.copy(notification_permission = isChecked))
+
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     try {
                         SupabaseClient.client.postgrest["USER"].update(
@@ -209,7 +220,7 @@ class ProfileFragment : Fragment() {
                                 set("notification_permission", isChecked)
                             }
                         ) {
-                            filter { eq("userid", user.UserID) }
+                            filter { eq("userid", currentUser.UserID) }
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
@@ -393,6 +404,35 @@ class ProfileFragment : Fragment() {
             helpSupportDialog?.dismiss()
         }
 
+        dialogBinding.cardEmailContact.setOnClickListener {
+            val email = "carelyohealth@gmail.com"
+            val subject = "Carelyo App Support Request"
+            val body = "Hi Carelyo Support Team,\n\nI need help with: "
+
+            val gmailIntent = Intent(Intent.ACTION_SENDTO).apply {
+                data = android.net.Uri.parse("mailto:$email")
+                putExtra(Intent.EXTRA_SUBJECT, subject)
+                putExtra(Intent.EXTRA_TEXT, body)
+                `package` = "com.google.android.gm"
+            }
+
+            try {
+                startActivity(gmailIntent)
+            } catch (e: Exception) {
+                // Fallback to general email client if Gmail app is not installed
+                val fallbackIntent = Intent(Intent.ACTION_SENDTO).apply {
+                    data = android.net.Uri.parse("mailto:$email")
+                    putExtra(Intent.EXTRA_SUBJECT, subject)
+                    putExtra(Intent.EXTRA_TEXT, body)
+                }
+                try {
+                    startActivity(Intent.createChooser(fallbackIntent, "Send email via..."))
+                } catch (ex: Exception) {
+                    Toast.makeText(requireContext(), "No email app found to send email", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
         helpSupportDialog?.window?.setBackgroundDrawableResource(android.R.color.transparent)
     }
 
@@ -412,6 +452,10 @@ class ProfileFragment : Fragment() {
 
         btnConfirm.setOnClickListener {
             dialog.dismiss()
+            val currentUser = sessionManager.getUserSession()
+            if (currentUser != null && currentUser.UserID > 0) {
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().unsubscribeFromTopic("user_${currentUser.UserID}")
+            }
             sessionManager.clearSession()
             val intent = Intent(requireContext(), LoginActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK

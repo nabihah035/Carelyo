@@ -8,49 +8,49 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.carelyo.R
-import com.example.carelyo.data.entity.Reminder
+import com.example.carelyo.data.entity.Notification
 import com.example.carelyo.databinding.ItemReminderBinding
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ReminderAdapter(
-    private val onDismissClick: (Reminder) -> Unit,
-    private val onItemClick: (Reminder) -> Unit,
-    private val onMarkAsReadClick: (Reminder) -> Unit
-) : ListAdapter<Reminder, ReminderAdapter.ReminderViewHolder>(ReminderDiffCallback()) {
+    private val onDismissClick: (Notification) -> Unit,
+    private val onItemClick: (Notification) -> Unit,
+    private val onMarkAsReadClick: (Notification) -> Unit
+) : ListAdapter<Notification, ReminderAdapter.NotificationViewHolder>(NotificationDiffCallback()) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ReminderViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): NotificationViewHolder {
         val binding = ItemReminderBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false
         )
-        return ReminderViewHolder(binding)
+        return NotificationViewHolder(binding)
     }
 
-    override fun onBindViewHolder(holder: ReminderViewHolder, position: Int) {
-        val reminder = getItem(position)
-        holder.bind(reminder)
+    override fun onBindViewHolder(holder: NotificationViewHolder, position: Int) {
+        val notification = getItem(position)
+        holder.bind(notification)
 
         holder.itemView.setOnClickListener {
-            onItemClick(reminder)
+            onItemClick(notification)
             // Mark as read when clicked if not already read
-            if (reminder.noti_status == "Unread") {
-                onMarkAsReadClick(reminder) // This will mark as read
+            if (notification.is_read != true) {
+                onMarkAsReadClick(notification)
             }
         }
 
         holder.binding.btnDismiss.setOnClickListener {
-            onDismissClick(reminder)
+            onDismissClick(notification)
         }
     }
 
-    class ReminderViewHolder(val binding: ItemReminderBinding) :
+    class NotificationViewHolder(val binding: ItemReminderBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(reminder: Reminder) {
-            // Set title based on reminder type
-            val title = when (reminder.reminder_type?.lowercase()) {
+        fun bind(notification: Notification) {
+            // Set title based on notification title or type
+            val title = notification.title?.takeIf { it.isNotEmpty() } ?: when (notification.type?.lowercase()) {
                 "vaccine" -> "Vaccine Reminder"
                 "medication" -> "Medication Reminder"
                 "appointment" -> "Appointment Reminder"
@@ -58,20 +58,14 @@ class ReminderAdapter(
             }
             binding.tvTitle.text = title
 
-            // Set subtitle based on reference type
-            val subtitle = when (reminder.reminder_type?.lowercase()) {
-                "vaccine" -> "Vaccine scheduled for ${formatDate(reminder.scheduled_at)}"
-                "medication" -> "Medication due at ${formatTime(reminder.scheduled_at)}"
-                "appointment" -> "Appointment at ${formatDateTime(reminder.scheduled_at)}"
-                else -> "Reminder scheduled for ${formatDateTime(reminder.scheduled_at)}"
-            }
-            binding.tvSubtitle.text = subtitle
+            // Set message / subtitle
+            binding.tvSubtitle.text = notification.message ?: ""
 
             // Set timestamp
-            binding.tvTimestamp.text = formatRelativeTime(reminder.created_at)
+            binding.tvTimestamp.text = formatRelativeTime(notification.created_at)
 
-            // Set icon based on reminder type
-            val iconRes = when (reminder.reminder_type?.lowercase()) {
+            // Set icon based on type
+            val iconRes = when (notification.type?.lowercase()) {
                 "vaccine" -> R.drawable.ic_vaccine
                 "medication" -> R.drawable.ic_pill
                 "appointment" -> R.drawable.ic_calendar
@@ -80,14 +74,11 @@ class ReminderAdapter(
             binding.ivReminderIcon.setImageResource(iconRes)
 
             // Show/hide unread dot
-            binding.viewUnreadDot.visibility = if (reminder.noti_status == "Unread") {
-                View.VISIBLE
-            } else {
-                View.GONE
-            }
+            val isUnread = notification.is_read != true
+            binding.viewUnreadDot.visibility = if (isUnread) View.VISIBLE else View.GONE
 
             // Change background color based on read status
-            if (reminder.noti_status == "Unread") {
+            if (isUnread) {
                 binding.itemContainer.setBackgroundColor(
                     ContextCompat.getColor(binding.root.context, R.color.unread_background)
                 )
@@ -98,73 +89,38 @@ class ReminderAdapter(
             }
         }
 
-        private fun formatDate(dateString: String?): String {
-            if (dateString.isNullOrEmpty()) return "Unknown date"
-            return try {
-                val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                val date = format.parse(dateString)
-                val outputFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-                outputFormat.format(date ?: Date())
-            } catch (e: Exception) {
-                "Unknown date"
-            }
-        }
-
-        private fun formatTime(dateString: String?): String {
-            if (dateString.isNullOrEmpty()) return "Unknown time"
-            return try {
-                val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                val date = format.parse(dateString)
-                val outputFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
-                outputFormat.format(date ?: Date())
-            } catch (e: Exception) {
-                "Unknown time"
-            }
-        }
-
-        private fun formatDateTime(dateString: String?): String {
-            if (dateString.isNullOrEmpty()) return "Unknown time"
-            return try {
-                val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                val date = format.parse(dateString)
-                val outputFormat = SimpleDateFormat("dd MMM yyyy, h:mm a", Locale.getDefault())
-                outputFormat.format(date ?: Date())
-            } catch (e: Exception) {
-                "Unknown time"
-            }
-        }
-
         private fun formatRelativeTime(dateString: String?): String {
-            if (dateString.isNullOrEmpty()) return "Just now"
-            return try {
-                val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                val date = format.parse(dateString)
-                val now = Date()
-                val diff = now.time - (date?.time ?: 0)
-
-                when {
-                    diff < 60000 -> "Just now"
-                    diff < 3600000 -> "${diff / 60000}m ago"
-                    diff < 86400000 -> "${diff / 3600000}h ago"
-                    diff < 172800000 -> "Yesterday"
-                    else -> {
-                        val outputFormat = SimpleDateFormat("dd MMM", Locale.getDefault())
-                        outputFormat.format(date ?: Date())
-                    }
+            if (dateString.isNullOrEmpty()) return ""
+            val patterns = listOf(
+                "yyyy-MM-dd'T'HH:mm:ssXXX",
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd"
+            )
+            var date: Date? = null
+            for (pattern in patterns) {
+                try {
+                    val format = SimpleDateFormat(pattern, Locale.getDefault())
+                    date = format.parse(dateString)
+                    if (date != null) break
+                } catch (_: Exception) {
                 }
-            } catch (e: Exception) {
-                "Just now"
             }
+
+            if (date == null) return dateString
+
+            val outputFormat = SimpleDateFormat("dd MMM yyyy, hh:mm a", Locale.getDefault())
+            return outputFormat.format(date)
         }
     }
 
-    class ReminderDiffCallback : DiffUtil.ItemCallback<Reminder>() {
-        override fun areItemsTheSame(oldItem: Reminder, newItem: Reminder): Boolean {
-            return oldItem.RemindID == newItem.RemindID
+    class NotificationDiffCallback : DiffUtil.ItemCallback<Notification>() {
+        override fun areItemsTheSame(oldItem: Notification, newItem: Notification): Boolean {
+            return oldItem.NotificationID == newItem.NotificationID
         }
 
-        override fun areContentsTheSame(oldItem: Reminder, newItem: Reminder): Boolean {
+        override fun areContentsTheSame(oldItem: Notification, newItem: Notification): Boolean {
             return oldItem == newItem
         }
     }
-}
+}

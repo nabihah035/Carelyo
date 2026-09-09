@@ -27,6 +27,8 @@ import com.example.carelyo.databinding.FragmentDoctorSummaryBinding
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class DoctorSummaryFragment : Fragment() {
@@ -88,7 +90,6 @@ class DoctorSummaryFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
-        // Upper action buttons
         binding.btnRecord.setOnClickListener {
             showVoiceRecordingDialog()
         }
@@ -105,7 +106,6 @@ class DoctorSummaryFragment : Fragment() {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-            // Attempt to increase timeout for devices that support it
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 10000L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 10000L)
             putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 10000L)
@@ -113,7 +113,7 @@ class DoctorSummaryFragment : Fragment() {
 
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(p0: Bundle?) {
-                tvRecordHintDialog?.text = "Listening... Tap mic circle to stop."
+                tvRecordHintDialog?.text = "Listening... Tap mic to stop."
                 isRecording = true
             }
             override fun onBeginningOfSpeech() {}
@@ -195,6 +195,7 @@ class DoctorSummaryFragment : Fragment() {
                     spinnerChild.adapter = spinnerAdapter
                     val initialIndex = children.indexOfFirst { it.ChildID == selectedChildId }.coerceAtLeast(0)
                     spinnerChild.setSelection(initialIndex)
+                    selectedChildId = children[initialIndex].ChildID
 
                     spinnerChild.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                         override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
@@ -222,23 +223,17 @@ class DoctorSummaryFragment : Fragment() {
         btnSaveRecording.setOnClickListener {
             val doctorName = etDoctorName.text.toString().trim()
             val clinicName = etClinicName.text.toString().trim()
-            if (doctorName.isEmpty()) {
-                etDoctorName.error = "Doctor name required"
-                return@setOnClickListener
-            }
+
             if (transcribedText.isEmpty()) {
-                Toast.makeText(context, "Please record raw notes first", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Please record notes first", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            if (selectedChildId == -1) return@setOnClickListener
-
-            val finalNotes = if (clinicName.isNotEmpty()) {
-                "Clinic: $clinicName\n$transcribedText"
-            } else {
-                transcribedText
+            if (selectedChildId == -1) {
+                Toast.makeText(context, "Please select a child", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
 
-            viewModel.saveConsultationNotes(selectedChildId, doctorName, clinicName, finalNotes)
+            viewModel.saveConsultationNotes(selectedChildId, doctorName, clinicName, transcribedText)
             dialog.dismiss()
         }
 
@@ -272,6 +267,7 @@ class DoctorSummaryFragment : Fragment() {
                     spinnerChild.adapter = spinnerAdapter
                     val initialIndex = children.indexOfFirst { it.ChildID == selectedChildId }.coerceAtLeast(0)
                     spinnerChild.setSelection(initialIndex)
+                    selectedChildId = children[initialIndex].ChildID
 
                     spinnerChild.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                         override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
@@ -288,23 +284,16 @@ class DoctorSummaryFragment : Fragment() {
             val clinicName = etClinicName.text.toString().trim()
             val rawNotes = etRawNotesInput.text.toString().trim()
 
-            if (doctorName.isEmpty()) {
-                etDocNameInput.error = "Doctor name required"
-                return@setOnClickListener
-            }
             if (rawNotes.isEmpty()) {
                 etRawNotesInput.error = "Notes cannot be empty"
                 return@setOnClickListener
             }
-            if (selectedChildId == -1) return@setOnClickListener
-
-            val finalNotes = if (clinicName.isNotEmpty()) {
-                "Clinic: $clinicName\n$rawNotes"
-            } else {
-                rawNotes
+            if (selectedChildId == -1) {
+                Toast.makeText(context, "Please select a child", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
 
-            viewModel.saveConsultationNotes(selectedChildId, doctorName, clinicName, finalNotes)
+            viewModel.saveConsultationNotes(selectedChildId, doctorName, clinicName, rawNotes)
             dialog.dismiss()
         }
 
@@ -321,6 +310,12 @@ class DoctorSummaryFragment : Fragment() {
 
     private fun observeViewModel() {
         viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.childrenList.collectLatest { children ->
+                summaryAdapter.setChildren(children)
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
             viewModel.doctorVisits.collectLatest { visits ->
                 summaryAdapter.submitList(visits)
             }
@@ -329,8 +324,21 @@ class DoctorSummaryFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.summaryState.collectLatest { state ->
                 when (state) {
-                    is UiState.Loading -> binding.progressBar.visibility = View.VISIBLE
-                    else -> binding.progressBar.visibility = View.GONE
+                    is UiState.Loading -> {
+                        binding.llLoadingOverlay.visibility = View.VISIBLE
+                        binding.tvLoadingMessage.text = state.message
+                    }
+                    is UiState.Success -> {
+                        binding.llLoadingOverlay.visibility = View.GONE
+                        Toast.makeText(context, state.data, Toast.LENGTH_SHORT).show()
+                        viewModel.resetState()
+                    }
+                    is UiState.Error -> {
+                        binding.llLoadingOverlay.visibility = View.GONE
+                        Toast.makeText(context, state.message, Toast.LENGTH_LONG).show()
+                        viewModel.resetState()
+                    }
+                    else -> binding.llLoadingOverlay.visibility = View.GONE
                 }
             }
         }
@@ -349,35 +357,42 @@ class DoctorSummaryFragment : Fragment() {
         val sheetView = layoutInflater.inflate(R.layout.dialog_doctor_summary_detail, null)
         dialog.setContentView(sheetView)
 
-        sheetView.findViewById<android.widget.TextView>(R.id.tvDetailDoctorName).text = visit.doctor_name
-        sheetView.findViewById<android.widget.TextView>(R.id.tvDetailVisitDate).text = visit.visit_date
-        sheetView.findViewById<android.widget.TextView>(R.id.tvDetailAiSummaryText).text = visit.ai_summary
-        sheetView.findViewById<android.widget.TextView>(R.id.tvDetailRawNotes).text = visit.raw_notes
+        val title = when {
+            !visit.doctor_name.isNullOrBlank() -> visit.doctor_name
+            visit.raw_notes?.startsWith("Doctor:") == true -> {
+                visit.raw_notes.lineSequence().firstOrNull()?.removePrefix("Doctor:")?.trim()
+            }
+            else -> null
+        } ?: "Doctor Visit Note"
 
-        val pointsContainer = sheetView.findViewById<android.widget.LinearLayout>(R.id.llDetailKeyPointsContainer)
-        pointsContainer.removeAllViews()
+        val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
+        val formattedDate = visit.visit_date?.let {
+            try {
+                val date = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(it)
+                dateFormat.format(date ?: Date())
+            } catch (e: Exception) {
+                it
+            }
+        } ?: "Date not recorded"
 
-        val parsedPoints = parseKeyPoints(visit.ai_summary ?: "")
-        parsedPoints.forEachIndexed { index, point ->
-            val itemKeyView = layoutInflater.inflate(R.layout.item_key_point, pointsContainer, false)
-            itemKeyView.findViewById<android.widget.TextView>(R.id.tvKeyPoint).text = "${index + 1}. $point"
-            pointsContainer.addView(itemKeyView)
+        sheetView.findViewById<android.widget.TextView>(R.id.tvDetailDoctorName).text = title
+        sheetView.findViewById<android.widget.TextView>(R.id.tvDetailVisitDate).text = formattedDate
+
+        val cardAiSummary = sheetView.findViewById<View>(R.id.cardAiSummary)
+        val tvDetailAiSummaryText = sheetView.findViewById<android.widget.TextView>(R.id.tvDetailAiSummaryText)
+        val tvDetailRawNotes = sheetView.findViewById<android.widget.TextView>(R.id.tvDetailRawNotes)
+
+        if (!visit.summary.isNullOrBlank()) {
+            cardAiSummary.visibility = View.VISIBLE
+            tvDetailAiSummaryText.text = visit.summary
+        } else {
+            cardAiSummary.visibility = View.GONE
         }
+
+        tvDetailRawNotes.text = visit.raw_notes ?: "No notes recorded."
 
         sheetView.findViewById<View>(R.id.btnBack).setOnClickListener { dialog.dismiss() }
         dialog.show()
-    }
-
-    private fun parseKeyPoints(summary: String): List<String> {
-        val lines = summary.split("\n")
-        val keyPoints = mutableListOf<String>()
-        for (line in lines) {
-            val trimmed = line.trim()
-            if (trimmed.startsWith("•") || trimmed.startsWith("-")) {
-                keyPoints.add(trimmed.drop(1).trim())
-            }
-        }
-        return keyPoints.ifEmpty { summary.split(".").map { it.trim() }.filter { it.length > 5 } }
     }
 
     override fun onDestroyView() {

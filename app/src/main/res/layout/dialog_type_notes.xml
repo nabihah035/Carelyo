@@ -20,7 +20,7 @@
             android:id="@+id/tvTypeNotesTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Type Notes"
+            android:text="Take Doctor Notes"
             android:textColor="#0F172A"
             android:textSize="20sp"
             android:textStyle="bold"
@@ -86,7 +86,7 @@
                 android:id="@+id/etDocNameInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Doctor's name *"
+                android:hint="Doctor's name (optional)"
                 android:inputType="textPersonName"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
@@ -116,7 +116,7 @@
                 android:id="@+id/etClinicName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Clinic name"
+                android:hint="Clinic name (optional)"
                 android:inputType="text"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp"
@@ -147,7 +147,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="150dp"
                 android:gravity="top|start"
-                android:hint="Type or paste doctor's notes here... *"
+                android:hint="Type doctor's advice, diagnosis, instructions... *"
                 android:inputType="textMultiLine"
                 android:padding="16dp"
                 android:textColor="#334155"
@@ -155,14 +155,14 @@
                 android:textSize="15sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Generate Button -->
+        <!-- Save Button -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnGenerateAiSummary"
             android:layout_width="0dp"
             android:layout_height="52dp"
             android:layout_marginTop="16dp"
-            android:backgroundTint="#8A2BE2"
-            android:text="Generate AI Summary"
+            android:backgroundTint="#008B75"
+            android:text="Save Doctor Note"
             android:textAllCaps="false"
             android:textColor="@android:color/white"
             android:textSize="15sp"

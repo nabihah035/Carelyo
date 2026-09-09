@@ -25,9 +25,9 @@
             <div class="filter-tabs">
                 <button class="filter-tab active" data-filter="all" id="filter-all">All (0)</button>
                 <button class="filter-tab" data-filter="Scheduled" id="filter-scheduled">Scheduled (0)</button>
-                <button class="filter-tab" data-filter="Upcoming" id="filter-upcoming">Upcoming (0)</button>
                 <button class="filter-tab" data-filter="Completed" id="filter-completed">Completed (0)</button>
                 <button class="filter-tab" data-filter="Cancelled" id="filter-cancelled">Cancelled (0)</button>
+                <button class="filter-tab" data-filter="No-Show" id="filter-noshow">No-Show (0)</button>
             </div>
         </div>
 
@@ -53,30 +53,31 @@
 
                 <div style="margin-bottom: 12px;">
                     <label style="display: block; margin-bottom: 4px;">Child *</label>
-                    <select id="appt-child" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;" disabled>
+                    <select id="appt-child" required disabled style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
                         <option value="">Select a parent first...</option>
                     </select>
                 </div>
 
-                <div class="grid-2" style="gap: 12px; margin-bottom: 12px;">
-                    <div>
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                    <div style="flex: 1;">
                         <label style="display: block; margin-bottom: 4px;">Date *</label>
                         <input type="date" id="appt-date" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
                     </div>
-                    <div>
+                    <div style="flex: 1;">
                         <label style="display: block; margin-bottom: 4px;">Time *</label>
                         <input type="time" id="appt-time" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
                     </div>
                 </div>
 
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Clinic Name</label>
-                    <input type="text" id="appt-clinic" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
-                </div>
-
-                <div style="margin-bottom: 12px;">
-                    <label style="display: block; margin-bottom: 4px;">Doctor Name</label>
-                    <input type="text" id="appt-doctor" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 4px;">Clinic</label>
+                        <input type="text" id="appt-clinic" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; margin-bottom: 4px;">Doctor</label>
+                        <input type="text" id="appt-doctor" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
+                    </div>
                 </div>
 
                 <div style="margin-bottom: 12px;">
@@ -88,9 +89,9 @@
                     <label style="display: block; margin-bottom: 4px;">Status *</label>
                     <select id="appt-status" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 4px;">
                         <option value="Scheduled">Scheduled</option>
-                        <option value="Upcoming">Upcoming</option>
                         <option value="Completed">Completed</option>
                         <option value="Cancelled">Cancelled</option>
+                        <option value="No-Show">No-Show</option>
                     </select>
                 </div>
 

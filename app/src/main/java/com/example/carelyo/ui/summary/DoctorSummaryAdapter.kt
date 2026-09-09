@@ -8,6 +8,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.carelyo.R
 import com.example.carelyo.databinding.ItemListSummariesBinding
+import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.entity.DoctorVisit
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -17,13 +18,20 @@ class DoctorSummaryAdapter(
     private val onItemClick: (DoctorVisit) -> Unit
 ) : ListAdapter<DoctorVisit, DoctorSummaryAdapter.ViewHolder>(DiffCallback()) {
 
+    private var childrenMap: Map<Int, String> = emptyMap()
+
+    fun setChildren(children: List<Child>) {
+        childrenMap = children.associate { it.ChildID to (it.full_name ?: "Child") }
+        notifyDataSetChanged()
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemListSummariesBinding.inflate(
             LayoutInflater.from(parent.context),
             parent,
             false
         )
-        return ViewHolder(binding, onItemClick)
+        return ViewHolder(binding, onItemClick, { childrenMap })
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -32,11 +40,23 @@ class DoctorSummaryAdapter(
 
     class ViewHolder(
         private val binding: ItemListSummariesBinding,
-        private val onItemClick: (DoctorVisit) -> Unit
+        private val onItemClick: (DoctorVisit) -> Unit,
+        private val getChildrenMap: () -> Map<Int, String>
     ) : RecyclerView.ViewHolder(binding.root) {
 
         fun bind(visit: DoctorVisit) {
-            binding.tvDoctorName.text = visit.doctor_name ?: "Unknown Doctor"
+            val docLine = visit.raw_notes?.lineSequence()?.find { it.trim().startsWith("Doctor:", ignoreCase = true) }
+            val extractedDoctor = docLine?.substringAfter("Doctor:")?.trim()
+            val doctorTitle = when {
+                !visit.doctor_name.isNullOrBlank() -> visit.doctor_name
+                !extractedDoctor.isNullOrBlank() -> extractedDoctor
+                else -> "Doctor Visit"
+            }
+
+            val childName = visit.ChildID?.let { getChildrenMap()[it] }
+            val headerText = if (!childName.isNullOrBlank()) "$childName • $doctorTitle" else doctorTitle
+
+            binding.tvDoctorName.text = headerText
 
             // Format date
             val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
@@ -49,12 +69,17 @@ class DoctorSummaryAdapter(
                 }
             } ?: "No date"
 
-            // Display notes preview directly
-            val previewText = visit.raw_notes?.take(100) ?: "No notes available"
-            binding.tvAiSummaryText.text = previewText
+            // Display AI summary if available, otherwise raw notes preview
+            if (!visit.summary.isNullOrBlank()) {
+                binding.tvNotesLabel.text = "AI Summary (Qwen2.5:3b):"
+                binding.tvAiSummaryText.text = visit.summary.take(200) + if (visit.summary.length > 200) "..." else ""
+            } else {
+                binding.tvNotesLabel.text = "Doctor Visit Notes:"
+                binding.tvAiSummaryText.text = visit.raw_notes?.take(150) ?: "No notes available"
+            }
 
-            // Clear extra key points containers if not needed
             binding.llKeyPointsContainer.removeAllViews()
+            binding.llKeyPointsContainer.visibility = View.GONE
             binding.tvMorePointsLink.visibility = View.GONE
 
             binding.ivDocIcon.setImageResource(R.drawable.ic_doctor_visit)

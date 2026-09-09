@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="24dp"
+    android:orientation="vertical">
+
+    <!-- ── Child Header Section ────────────────────────────────── -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <!-- Child Avatar Container with soft background -->
+        <FrameLayout
+            android:id="@+id/flChildAvatarContainer"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_circle_badge"
+            android:backgroundTint="#E0F7FA">
+
+            <ImageView
+                android:id="@+id/ivChildAvatar"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_avatar_female"
+                tools:ignore="ContentDescription" />
+        </FrameLayout>
+
+        <!-- Child Name & Progress -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvGroupChildName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#0F172A"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                tools:text="Aisyah Binti Ahmad" />
+
+            <TextView
+                android:id="@+id/tvGroupChildSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:textColor="#64748B"
+                android:textSize="13sp"
+                tools:text="2 years 3 months · 7/8 completed" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ── List of Vaccines for this child ─────────────────────── -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvChildVaccines"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:nestedScrollingEnabled="false"
+        tools:itemCount="2"
+        tools:listitem="@layout/item_vaccine_schedule" />
+
+</LinearLayout>

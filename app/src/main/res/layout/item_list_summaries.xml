@@ -24,15 +24,15 @@
                 android:id="@+id/flIconContainer"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:background="#F3E5F5"
+                android:background="@drawable/bg_circle_mint_light"
                 android:importantForAccessibility="no">
                 <ImageView
                     android:id="@+id/ivDocIcon"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
                     android:layout_gravity="center"
-                    android:src="@android:drawable/ic_menu_compass"
-                    app:tint="#8A2BE2"
+                    android:src="@drawable/ic_doctor_visit"
+                    app:tint="#008B75"
                     tools:ignore="ContentDescription" />
             </FrameLayout>
 
@@ -40,7 +40,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_toEndOf="@id/flIconContainer"
+                android:layout_toStartOf="@id/ivChevronRight"
                 android:layout_marginStart="12dp"
+                android:layout_marginEnd="8dp"
                 android:orientation="vertical">
 
                 <TextView
@@ -50,12 +52,13 @@
                     android:textColor="#1A1C1E"
                     android:textSize="15sp"
                     android:textStyle="bold"
-                    tools:text="Dr. Siti Rahman" />
+                    tools:text="Adam - Doctor Visit" />
 
                 <TextView
                     android:id="@+id/tvVisitDate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:textColor="#6C757D"
                     android:textSize="12sp"
                     tools:text="15 Apr 2026" />
@@ -76,15 +79,16 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:background="#F8F0FB"
+            android:background="#E6F7F3"
             android:orientation="vertical"
             android:padding="12dp">
 
             <TextView
+                android:id="@+id/tvNotesLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="AI Summary:"
-                android:textColor="#8A2BE2"
+                android:text="Doctor Visit Notes:"
+                android:textColor="#008B75"
                 android:textSize="13sp"
                 android:textStyle="bold" />
 
@@ -93,59 +97,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textColor="#8A2BE2"
+                android:textColor="#334155"
                 android:textSize="13sp"
-                tools:text="Anak anda mengalami demam ringan dan selesema biasa. Tiada tanda-tanda jangkitan yang serius." />
+                android:lineSpacingExtra="2dp"
+                tools:text="Prescribed paracetamol. Follow up in 3 days if fever persists." />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvKeyPointsHeader"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Key Points:"
-            android:textColor="#495057"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-
+        <!-- Container kept for compatibility if needed -->
         <LinearLayout
             android:id="@+id/llKeyPointsContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:layout_marginTop="4dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                tools:ignore="UseCompoundDrawables">
-                <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:src="@android:drawable/checkbox_on_background"
-                    app:tint="#20B2AA"
-                    tools:ignore="ContentDescription" />
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:text="Demam ringan (38.5°C)"
-                    android:textColor="#495057"
-                    android:textSize="13sp" />
-            </LinearLayout>
-        </LinearLayout>
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/tvMorePointsLink"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="#20B2AA"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            tools:text="+2 more points" />
+            android:visibility="gone" />
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

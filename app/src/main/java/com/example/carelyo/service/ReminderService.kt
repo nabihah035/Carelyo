@@ -121,17 +121,10 @@ class ReminderService(private val application: Application) {
     suspend fun deleteReminder(remindId: Int): Boolean {
         return try {
             withContext(Dispatchers.IO) {
-                val reminder = SupabaseClient.client.postgrest["REMINDER"]
-                    .select { filter { eq("remindid", remindId) } }
-                    .decodeList<Reminder>()
-                    .firstOrNull()
-                reminder?.let {
-                    val updatedReminder = it.copy(noti_status = "Delete")
-                    SupabaseClient.client.postgrest["REMINDER"]
-                        .update(updatedReminder) {
-                            filter { eq("remindid", remindId) }
-                        }
-                }
+                SupabaseClient.client.postgrest["REMINDER"]
+                    .delete {
+                        filter { eq("remindid", remindId) }
+                    }
                 true
             }
         } catch (e: Exception) {

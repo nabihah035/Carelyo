@@ -54,6 +54,11 @@ class HelpActivity : AppCompatActivity() {
         binding.btnBack.setOnClickListener {
             finish()
         }
+        binding.btnNewChat.setOnClickListener {
+            viewModel.startNewSession()
+            binding.suggestedQuestionsLayout.visibility = android.view.View.VISIBLE
+            Toast.makeText(this, "Started new chat session", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun setupChatRecyclerView() {
@@ -68,6 +73,12 @@ class HelpActivity : AppCompatActivity() {
                 viewModel.messagesList.collect { apiMessages ->
                     // 1. Filter out system prompt setup messages
                     val displayableMessages = apiMessages.filter { it.role != "system" }
+
+                    if (displayableMessages.isNotEmpty()) {
+                        binding.suggestedQuestionsLayout.visibility = android.view.View.GONE
+                    } else {
+                        binding.suggestedQuestionsLayout.visibility = android.view.View.VISIBLE
+                    }
 
                     // 2. Map backend data models to your standard chat UI items
                     val uiMessages = displayableMessages.map { apiMsg ->

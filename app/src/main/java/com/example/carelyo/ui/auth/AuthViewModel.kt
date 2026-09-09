@@ -37,7 +37,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application), C
         authAgent.performUserLogin(email, passwordEntered)
     }
 
-    fun register(email: String, passwordEntered: String, name: String, phone: String, role: String = "Parent") {
+    fun register(email: String, passwordEntered: String, name: String, phone: String, role: String = com.example.carelyo.data.entity.UserRole.PARENT.value) {
         _authState.value = AuthState.Loading
         authAgent.registerNewUser(email, passwordEntered, name, phone, role)
     }

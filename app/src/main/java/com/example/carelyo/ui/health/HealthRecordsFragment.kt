@@ -278,17 +278,17 @@ class HealthRecordsFragment : Fragment() {
             val allergyName = dialogBinding.etAllergenName.text.toString().trim()
 
             val allergyType = when (selectedTypeButton?.id) {
-                dialogBinding.btnTypeFood.id -> "Food"
-                dialogBinding.btnTypeMedication.id -> "Medication"
-                dialogBinding.btnTypeEnvironmental.id -> "Environmental"
-                else -> "Other"
+                dialogBinding.btnTypeFood.id -> com.example.carelyo.data.entity.AllergyType.FOOD.value
+                dialogBinding.btnTypeMedication.id -> com.example.carelyo.data.entity.AllergyType.MEDICATION.value
+                dialogBinding.btnTypeEnvironmental.id -> com.example.carelyo.data.entity.AllergyType.ENVIRONMENTAL.value
+                else -> com.example.carelyo.data.entity.AllergyType.FOOD.value
             }
 
             val severity = when (selectedSeverityButton?.id) {
-                dialogBinding.btnSeverityMild.id -> "Mild"
-                dialogBinding.btnSeverityModerate.id -> "Moderate"
-                dialogBinding.btnSeveritySevere.id -> "Severe"
-                else -> "Unknown"
+                dialogBinding.btnSeverityMild.id -> com.example.carelyo.data.entity.AllergySeverity.MILD.value
+                dialogBinding.btnSeverityModerate.id -> com.example.carelyo.data.entity.AllergySeverity.MODERATE.value
+                dialogBinding.btnSeveritySevere.id -> com.example.carelyo.data.entity.AllergySeverity.SEVERE.value
+                else -> com.example.carelyo.data.entity.AllergySeverity.MILD.value
             }
 
             val notes = dialogBinding.etReactionDescription.text.toString().trim()
@@ -475,10 +475,28 @@ class HealthRecordsFragment : Fragment() {
             val conditionName = history.condition_name ?: "Medical Record"
             val diagnosisDate = history.diagnosis_date ?: "Date not recorded"
             val treatment = history.treatment ?: "Not specified"
-            val notes = history.notes ?: "No additional notes available."
 
-            val doctorName = doctorVisit?.doctor_name ?: "Not recorded"
-            val clinicName = doctorVisit?.clinic_name ?: "Not recorded"
+            // Extract doctor and clinic if embedded in notes or from linked visit
+            val notesContent = history.notes ?: ""
+            val docFromNotes = notesContent.lineSequence()
+                .find { it.trim().startsWith("Doctor:", ignoreCase = true) }
+                ?.substringAfter("Doctor:")?.trim()
+            val clinicFromNotes = notesContent.lineSequence()
+                .find { it.trim().startsWith("Clinic:", ignoreCase = true) }
+                ?.substringAfter("Clinic:")?.trim()
+            val cleanNotes = notesContent.lineSequence()
+                .filterNot { it.trim().startsWith("Doctor:", ignoreCase = true) || it.trim().startsWith("Clinic:", ignoreCase = true) }
+                .joinToString("\n")
+                .removePrefix("Notes:")
+                .trim()
+
+            val doctorName = docFromNotes?.takeIf { it.isNotBlank() }
+                ?: doctorVisit?.doctor_name
+                ?: "Not recorded"
+            val clinicName = clinicFromNotes?.takeIf { it.isNotBlank() }
+                ?: doctorVisit?.clinic_name
+                ?: "Not recorded"
+            val displayNotes = cleanNotes.ifBlank { notesContent.ifBlank { "No additional notes available." } }
 
             val bottomSheetDialog = BottomSheetDialog(requireContext())
             val sheetBinding = DialogMedicalHistoryDetailsBinding.inflate(
@@ -491,7 +509,7 @@ class HealthRecordsFragment : Fragment() {
             sheetBinding.tvDetailsDoctor.text = doctorName
             sheetBinding.tvDetailsClinic.text = clinicName
             sheetBinding.tvDetailsDiagnosis.text = conditionName
-            sheetBinding.tvDetailsNotes.text = notes
+            sheetBinding.tvDetailsNotes.text = displayNotes
 
             sheetBinding.ivCloseDetails.setOnClickListener {
                 bottomSheetDialog.dismiss()

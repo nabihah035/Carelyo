@@ -82,7 +82,7 @@ class RegisterActivity : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            viewModel.register(email, password, name, phone, role = "Parent")
+            viewModel.register(email, password, name, phone, role = com.example.carelyo.data.entity.UserRole.PARENT.value)
         }
 
         binding.tvLogin.setOnClickListener {

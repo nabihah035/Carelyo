@@ -76,6 +76,25 @@ async function loadParentsForDropdown() {
             .ilike('role', 'parent')
             .order('full_name', { ascending: true });
 
+        if (clinicId) {
+            try {
+                const { data: clinicPatients } = await window.supabaseClient
+                    .from('CLINIC_PATIENT')
+                    .select('userid')
+                    .eq('clinicid', clinicId)
+                    .not('userid', 'is', null);
+
+                if (clinicPatients && clinicPatients.length > 0) {
+                    const clinicUserIds = [...new Set(clinicPatients.map(p => p.userid).filter(Boolean))];
+                    if (clinicUserIds.length > 0) {
+                        query = query.in('userid', clinicUserIds);
+                    }
+                }
+            } catch (e) {
+                console.warn("Could not filter dropdown parents by CLINIC_PATIENT:", e);
+            }
+        }
+
         const { data, error } = await query;
             
         if (error) throw error;
@@ -123,15 +142,16 @@ function loadChildrenForDropdown(selectedChildId = null) {
 function updateCounts() {
     const total = allAppointments.length;
     const scheduled = allAppointments.filter(a => (a.status || 'Scheduled').trim().toLowerCase() === 'scheduled').length;
-    const upcoming = allAppointments.filter(a => (a.status || '').trim().toLowerCase() === 'upcoming').length;
     const completed = allAppointments.filter(a => (a.status || '').trim().toLowerCase() === 'completed').length;
     const cancelled = allAppointments.filter(a => (a.status || '').trim().toLowerCase() === 'cancelled').length;
+    const noshow = allAppointments.filter(a => (a.status || '').trim().toLowerCase() === 'no-show').length;
 
     document.getElementById('filter-all').innerText = `All (${total})`;
     document.getElementById('filter-scheduled').innerText = `Scheduled (${scheduled})`;
-    document.getElementById('filter-upcoming').innerText = `Upcoming (${upcoming})`;
     document.getElementById('filter-completed').innerText = `Completed (${completed})`;
     document.getElementById('filter-cancelled').innerText = `Cancelled (${cancelled})`;
+    const noshowElem = document.getElementById('filter-noshow');
+    if (noshowElem) noshowElem.innerText = `No-Show (${noshow})`;
 }
 
 function renderAppointments(data, filter) {
@@ -247,11 +267,19 @@ async function openModal(id = null) {
                 loadChildrenForDropdown(data.childid);
                 document.getElementById('appt-date').value = data.appointment_date || '';
                 document.getElementById('appt-time').value = data.appointment_time || '';
-                document.getElementById('appt-clinic').value = data.clinic_name || '';
-                document.getElementById('appt-doctor').value = data.doctor_name || '';
+
+                const notesText = data.notes || '';
+                const docLine = notesText.split('\n').find(l => l.trim().startsWith('Doctor:'));
+                const clinicLine = notesText.split('\n').find(l => l.trim().startsWith('Clinic:'));
+                const cleanNotes = notesText.split('\n')
+                    .filter(l => !l.trim().startsWith('Doctor:') && !l.trim().startsWith('Clinic:'))
+                    .join('\n').trim();
+
+                document.getElementById('appt-clinic').value = clinicLine ? clinicLine.replace('Clinic:', '').trim() : '';
+                document.getElementById('appt-doctor').value = docLine ? docLine.replace('Doctor:', '').trim() : '';
                 document.getElementById('appt-purpose').value = data.purpose || '';
                 document.getElementById('appt-status').value = data.status || 'Scheduled';
-                document.getElementById('appt-notes').value = data.notes || '';
+                document.getElementById('appt-notes').value = cleanNotes;
             }
         } catch (err) {
             console.error('Error fetching appointment details:', err);
@@ -284,16 +312,22 @@ async function saveAppointment(e) {
     const userSession = sessionData ? JSON.parse(sessionData) : {};
     const clinicId = userSession.clinicid;
 
+    const clinicInput = document.getElementById('appt-clinic').value.trim();
+    const doctorInput = document.getElementById('appt-doctor').value.trim();
+    let rawNotes = document.getElementById('appt-notes').value.trim();
+
+    let combinedNotes = rawNotes;
+    if (doctorInput) combinedNotes = `Doctor: ${doctorInput}\n${combinedNotes}`.trim();
+    if (clinicInput) combinedNotes = `Clinic: ${clinicInput}\n${combinedNotes}`.trim();
+
     const payload = {
-        parentid: parentId,
-        childid: childId,
+        parentid: parseInt(parentId, 10),
+        childid: parseInt(childId, 10),
         appointment_date: document.getElementById('appt-date').value,
         appointment_time: document.getElementById('appt-time').value,
-        clinic_name: document.getElementById('appt-clinic').value,
-        doctor_name: document.getElementById('appt-doctor').value,
-        purpose: document.getElementById('appt-purpose').value,
-        status: document.getElementById('appt-status').value,
-        notes: document.getElementById('appt-notes').value
+        purpose: document.getElementById('appt-purpose').value || null,
+        status: document.getElementById('appt-status').value || 'Scheduled',
+        notes: combinedNotes || null
     };
 
     if (clinicId) {

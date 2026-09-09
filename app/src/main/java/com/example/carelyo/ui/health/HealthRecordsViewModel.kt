@@ -149,7 +149,7 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
 
     private suspend fun fetchAllergies(childId: Int): List<Allergie> {
         return try {
-            val allergies = SupabaseClient.client.postgrest["ALLERGIE"]
+            val allergies = SupabaseClient.client.postgrest["ALLERGIES"]
                 .select {
                     filter {
                         eq("childid", childId)
@@ -218,7 +218,7 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
     fun deleteAllergy(allergieId: Int, callback: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                SupabaseClient.client.postgrest["ALLERGIE"]
+                SupabaseClient.client.postgrest["ALLERGIES"]
                     .delete {
                         filter {
                             eq("allergieid", allergieId)
@@ -256,7 +256,7 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
                     notes = notes
                 )
 
-                val result = SupabaseClient.client.postgrest["ALLERGIE"]
+                val result = SupabaseClient.client.postgrest["ALLERGIES"]
                     .insert(newAllergy) { select() }
                     .decodeList<Allergie>()
                     .firstOrNull()
@@ -296,13 +296,19 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
 
                 val today = dateFormat.format(Date())
 
+                val formattedNotes = buildString {
+                    if (doctorName.isNotBlank()) append("Doctor: $doctorName\n")
+                    if (clinicName.isNotBlank()) append("Clinic: $clinicName\n")
+                    if (notes.isNotBlank()) append("Notes: $notes\n")
+                }.trim()
+
                 // Insert into MEDICAL_HISTORY table
                 val newMedicalHistory = MedicalHistoryInsert(
                     ChildID = childId,
                     condition_name = diagnosis,
                     diagnosis_date = today,
                     treatment = recordType,
-                    notes = notes
+                    notes = if (formattedNotes.isNotEmpty()) formattedNotes else notes.ifBlank { null }
                 )
 
                 println("[$TAG]: Inserting medical history: $newMedicalHistory")
@@ -314,22 +320,30 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
 
                 if (historyResult != null) {
                     // Also insert into DOCTOR_VISIT table for additional details
-                    val newDoctorVisit = DoctorVisitInsert(
-                        ChildID = childId,
-                        visit_date = today,
-                        clinic_name = clinicName,
-                        doctor_name = doctorName,
-                        raw_notes = notes,
-                        ai_summary = "Medical record: $diagnosis",
-                        summary_language = "en"
-                    )
+                    val combinedNotes = buildString {
+                        if (!doctorName.isNullOrBlank()) append("Doctor: $doctorName\n")
+                        if (!clinicName.isNullOrBlank()) append("Clinic: $clinicName\n")
+                        if (!diagnosis.isNullOrBlank()) append("Diagnosis: $diagnosis\n")
+                        if (!notes.isNullOrBlank()) append("Notes: $notes\n")
+                    }.trim()
 
-                    println("[$TAG]: Inserting doctor visit: $newDoctorVisit")
+                    try {
+                        val newDoctorVisit = DoctorVisitInsert(
+                            ChildID = childId,
+                            visit_date = today,
+                            raw_notes = combinedNotes,
+                            userid = currentUser.UserID
+                        )
 
-                    SupabaseClient.client.postgrest["DOCTOR_VISIT"]
-                        .insert(newDoctorVisit) { select() }
-                        .decodeList<DoctorVisit>()
-                        .firstOrNull()
+                        println("[$TAG]: Inserting doctor visit: $newDoctorVisit")
+
+                        SupabaseClient.client.postgrest["DOCTOR_VISIT"]
+                            .insert(newDoctorVisit) { select() }
+                            .decodeList<DoctorVisit>()
+                            .firstOrNull()
+                    } catch (dve: Exception) {
+                        println("[$TAG]: Non-critical error inserting DOCTOR_VISIT: ${dve.localizedMessage}")
+                    }
 
                     // Update local lists
                     allMedicalHistory = allMedicalHistory + historyResult
@@ -362,9 +376,7 @@ class HealthRecordsViewModel(application: Application) : AndroidViewModel(applic
 
     fun getDoctorVisitForHistory(history: MedicalHistory): DoctorVisit? {
         return allDoctorVisits.find {
-            it.ChildID == history.ChildID &&
-                    it.visit_date == history.diagnosis_date &&
-                    it.raw_notes == history.notes
+            it.ChildID == history.ChildID && it.visit_date == history.diagnosis_date
         }
     }
 

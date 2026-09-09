@@ -63,6 +63,7 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
+                <!-- FAQ 1 -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -80,22 +81,23 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="How do I add a child profile?"
+                            android:text="1. How do I add or manage my child's profile?"
                             android:textColor="#0F172A"
-                            android:textSize="15sp"
+                            android:textSize="14sp"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
-                            android:text="Go to Profile → My Children → tap &quot;+ Add&quot; to add a new child."
+                            android:text="Go to Profile → My Children and tap &quot;+ Add&quot; to register your child's birth date, gender, blood type, and health metrics."
                             android:textColor="#475569"
                             android:textSize="13sp"
                             android:lineSpacingMultiplier="1.2" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- FAQ 2 -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -113,22 +115,91 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Is my data secure?"
+                            android:text="2. How does the Vaccination Tracker work?"
                             android:textColor="#0F172A"
-                            android:textSize="15sp"
+                            android:textSize="14sp"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
-                            android:text="All data is encrypted and stored securely. We follow Malaysia PDPA compliance."
+                            android:text="Open the Vaccines tab to view the immunization schedule grouped by each child. Track scheduled, due, and completed doses easily."
                             android:textColor="#475569"
                             android:textSize="13sp"
                             android:lineSpacingMultiplier="1.2" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- FAQ 3 -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="#F8FAFC"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="3. How do I record Doctor Visit notes &amp; AI summaries?"
+                            android:textColor="#0F172A"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="In Doctor Notes, tap &quot;Record Note&quot; or &quot;Type Note&quot;. Carelyo's AI automatically analyzes and generates a concise summary of diagnosis and advice."
+                            android:textColor="#475569"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.2" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- FAQ 4 -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    app:cardBackgroundColor="#F8FAFC"
+                    app:cardCornerRadius="16dp"
+                    app:strokeWidth="0dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="4. How do Medication &amp; Appointment Reminders work?"
+                            android:textColor="#0F172A"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="Receive timely push notifications for medicine schedules and doctor appointments so you never miss an important healthcare event."
+                            android:textColor="#475569"
+                            android:textSize="13sp"
+                            android:lineSpacingMultiplier="1.2" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- FAQ 5 -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -146,16 +217,16 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="How do I contact support?"
+                            android:text="5. How does the AI Pediatric Assistant work?"
                             android:textColor="#0F172A"
-                            android:textSize="15sp"
+                            android:textSize="14sp"
                             android:textStyle="bold" />
 
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="6dp"
-                            android:text="Email us at support@carelyo.my or visit our website."
+                            android:text="Tap AI Help to ask questions about child wellness, nutrition, or mild symptoms anytime. All answers are personalized and stored for reference."
                             android:textColor="#475569"
                             android:textSize="13sp"
                             android:lineSpacingMultiplier="1.2" />

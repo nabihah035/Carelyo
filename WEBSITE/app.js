@@ -31,19 +31,37 @@ async function renderSidebar() {
     const sessionStr = localStorage.getItem('carelyo_admin_session');
     let session = sessionStr ? JSON.parse(sessionStr) : {};
     
-    // Fetch clinic details if not cached yet
-    if (session.clinicid && (!session.clinic || !session.clinic.address)) {
+    // Fetch clinic details if not cached yet or if only partial info
+    if (session.userid && (!session.clinic || !session.clinic.clinic_name || !session.clinic.address)) {
         try {
             if (window.supabaseClient) {
-                const { data: clinicData } = await window.supabaseClient
-                    .from('CLINIC')
+                // 1. Look up CLINIC_STAFF for this staff user
+                const { data: staffData } = await window.supabaseClient
+                    .from('CLINIC_STAFF')
                     .select('*')
-                    .eq('clinicid', session.clinicid)
-                    .single();
-                if (clinicData) {
-                    session.clinic = clinicData;
-                    session.clinic_name = clinicData.clinic_name;
-                    localStorage.setItem('carelyo_admin_session', JSON.stringify(session));
+                    .eq('userid', session.userid)
+                    .maybeSingle();
+
+                const targetClinicId = (staffData && staffData.clinicid) ? staffData.clinicid : session.clinicid;
+
+                if (targetClinicId) {
+                    session.clinicid = targetClinicId;
+                    if (staffData && staffData.role_at_clinic) {
+                        session.role_at_clinic = staffData.role_at_clinic;
+                    }
+
+                    // 2. Look up the specific clinic from CLINIC table
+                    const { data: clinicData } = await window.supabaseClient
+                        .from('CLINIC')
+                        .select('*')
+                        .eq('clinicid', targetClinicId)
+                        .maybeSingle();
+
+                    if (clinicData) {
+                        session.clinic = clinicData;
+                        session.clinic_name = clinicData.clinic_name;
+                        localStorage.setItem('carelyo_admin_session', JSON.stringify(session));
+                    }
                 }
             }
         } catch (e) {

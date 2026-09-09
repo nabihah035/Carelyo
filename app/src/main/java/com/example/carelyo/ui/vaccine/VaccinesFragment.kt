@@ -18,8 +18,10 @@ import com.example.carelyo.data.entity.Vaccination
 import com.example.carelyo.databinding.DialogAddChildVaccineBinding
 import com.example.carelyo.databinding.DialogAddVaccineBinding
 import com.example.carelyo.databinding.DialogChooseVaccineBinding
+import com.example.carelyo.databinding.DialogMarkVaccineTakenBinding
 import com.example.carelyo.databinding.DialogViewVaccineDetailBinding
 import com.example.carelyo.databinding.FragmentVaccinesBinding
+import com.example.carelyo.databinding.ItemChildVaccineGroupBinding
 import com.example.carelyo.databinding.ItemDialogChildSelectBinding
 import com.example.carelyo.databinding.ItemDialogVaccineSelectBinding
 import com.example.carelyo.databinding.ItemVaccineScheduleBinding
@@ -32,7 +34,7 @@ class VaccinesFragment : Fragment() {
     private var _binding: FragmentVaccinesBinding? = null
     private val binding get() = _binding!!
     private val viewModel: VaccineViewModel by viewModels()
-    private lateinit var scheduleAdapter: VaccineScheduleAdapter
+    private lateinit var groupAdapter: ChildVaccineGroupAdapter
     private var selectedChild: Child? = null
     private var selectedVaccine: Vaccination? = null
     private var selectedDate: String? = null
@@ -56,9 +58,7 @@ class VaccinesFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         setupRecyclerView()
-        setupChipFilters()
         observeViewModel()
-        setupAddButton()
         setupSwipeRefresh()
 
         // Request data
@@ -70,31 +70,12 @@ class VaccinesFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        scheduleAdapter = VaccineScheduleAdapter { item ->
+        groupAdapter = ChildVaccineGroupAdapter { item ->
             showVaccineDetailDialog(item)
         }
         binding.rvVaccineSchedule.apply {
             layoutManager = LinearLayoutManager(requireContext())
-            adapter = scheduleAdapter
-        }
-    }
-
-    private fun setupChipFilters() {
-        binding.chipGroupStatus.setOnCheckedStateChangeListener { group, checkedIds ->
-            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
-
-            when (checkedIds.first()) {
-                R.id.chipDone -> scheduleAdapter.filterByStatus(VaccineStatus.DONE)
-                R.id.chipUpcoming -> scheduleAdapter.filterByStatus(VaccineStatus.UPCOMING)
-                R.id.chipOverdue -> scheduleAdapter.filterByStatus(VaccineStatus.OVERDUE)
-            }
-        }
-        scheduleAdapter.filterByStatus(VaccineStatus.DONE)
-    }
-
-    private fun setupAddButton() {
-        binding.btnAddVaccine.setOnClickListener {
-            showChildSelectionDialog()
+            adapter = groupAdapter
         }
     }
 
@@ -147,10 +128,7 @@ class VaccinesFragment : Fragment() {
     }
 
     private fun updateUI(state: VaccineState.Success) {
-        binding.tvDoneCount.text = state.completedCount.toString()
-        binding.tvUpcomingCount.text = state.upcomingCount.toString()
-        binding.tvOverdueCount.text = state.overdueCount.toString()
-        scheduleAdapter.submitList(state.scheduleItems)
+        groupAdapter.submitList(state.childGroups)
     }
 
     // ── Step 1: Select Child ────────────────────────────────────────────
@@ -303,10 +281,16 @@ class VaccinesFragment : Fragment() {
             binding.tvSubtitleDetails.text = "${child.full_name ?: "Unknown"} · $recommendedText"
         }
 
-        // Setup status spinner
+        // Setup status spinner with fixed database enums
         val statusSpinner = dialog.findViewById<android.widget.Spinner>(R.id.spinnerStatus)
         if (statusSpinner != null) {
-            val statusOptions = arrayOf("Done", "Upcoming")
+            val statusOptions = arrayOf(
+                com.example.carelyo.data.entity.VaccineStatusEnum.COMPLETED.value,
+                com.example.carelyo.data.entity.VaccineStatusEnum.SCHEDULED.value,
+                com.example.carelyo.data.entity.VaccineStatusEnum.DUE.value,
+                com.example.carelyo.data.entity.VaccineStatusEnum.OVERDUE.value,
+                com.example.carelyo.data.entity.VaccineStatusEnum.SKIPPED.value
+            )
             val adapter = android.widget.ArrayAdapter(
                 requireContext(),
                 android.R.layout.simple_spinner_item,
@@ -314,8 +298,6 @@ class VaccinesFragment : Fragment() {
             )
             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             statusSpinner.adapter = adapter
-            
-            // Auto-select "Done" for past dates, "Upcoming" for future dates? Let user choose.
         }
 
         // Setup date picker
@@ -422,11 +404,13 @@ class VaccinesFragment : Fragment() {
 
         // Get status
         val statusSpinner = dialog.findViewById<android.widget.Spinner>(R.id.spinnerStatus)
-        val selectedStatus = statusSpinner?.selectedItem?.toString() ?: "Done"
+        val selectedStatus = statusSpinner?.selectedItem?.toString()
+            ?: com.example.carelyo.data.entity.VaccineStatusEnum.COMPLETED.value
 
-        if (selectedStatus == "Upcoming") {
+        if (selectedStatus == com.example.carelyo.data.entity.VaccineStatusEnum.SCHEDULED.value ||
+            selectedStatus == com.example.carelyo.data.entity.VaccineStatusEnum.DUE.value) {
             if (dateTime.isBefore(java.time.LocalDateTime.now())) {
-                Toast.makeText(requireContext(), "Upcoming vaccine must be scheduled in the future", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "Scheduled vaccine must be set to a future time", Toast.LENGTH_SHORT).show()
                 return
             }
         }
@@ -511,18 +495,145 @@ class VaccinesFragment : Fragment() {
             binding.btnMarkTaken.isEnabled = true
         }
 
-        // Show existing notes if any
-        binding.tvNotesValue.text = if (item.description.isNotEmpty()) item.description else "No notes available"
+        // Show clinic and notes
+        val fullNotes = item.description
+        val clinicRegex = Regex("(?i)Clinic:\\s*([^\\n]+)")
+        val match = clinicRegex.find(fullNotes)
+        if (match != null) {
+            val clinicVal = match.groupValues[1].trim()
+            binding.cvClinic.visibility = View.VISIBLE
+            binding.tvClinicValue.text = clinicVal
+            val cleanNotes = fullNotes.replace(match.value, "").trim()
+            binding.tvNotesValue.text = if (cleanNotes.isNotEmpty()) cleanNotes else "No additional notes"
+        } else {
+            binding.cvClinic.visibility = View.GONE
+            binding.tvNotesValue.text = if (fullNotes.isNotEmpty()) fullNotes else "No notes available"
+        }
 
         binding.btnMarkTaken.setOnClickListener {
-            // Directly update the vaccine status to Done
+            dialog.dismiss()
+            showMarkVaccineTakenDialog(item)
+        }
+
+        binding.ibClose.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
+    }
+
+    // ── Mark Vaccine as Taken Dialog ──────────────────────────────────
+    private fun showMarkVaccineTakenDialog(item: VaccineScheduleItem) {
+        val dialog = BottomSheetDialog(requireContext())
+        val binding = DialogMarkVaccineTakenBinding.inflate(LayoutInflater.from(requireContext()))
+        dialog.setContentView(binding.root)
+
+        dialog.window?.apply {
+            setBackgroundDrawableResource(android.R.color.transparent)
+            setLayout(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        binding.tvVaccineTitle.text = item.vaccineName
+        binding.tvSubtitleDetails.text = "${item.childName} · Administration Details"
+
+        // Setup default date to today
+        var selectedAdminDate = LocalDate.now()
+        binding.tvSelectedDate.text = selectedAdminDate.format(dateFormatter)
+
+        binding.btnDatePickerContainer.setOnClickListener {
+            val datePicker = android.app.DatePickerDialog(
+                requireContext(),
+                { _, year, month, dayOfMonth ->
+                    selectedAdminDate = LocalDate.of(year, month + 1, dayOfMonth)
+                    binding.tvSelectedDate.text = selectedAdminDate.format(dateFormatter)
+                },
+                selectedAdminDate.year,
+                selectedAdminDate.monthValue - 1,
+                selectedAdminDate.dayOfMonth
+            )
+            datePicker.show()
+        }
+
+        // Setup default time to now
+        var selectedAdminTime = java.time.LocalTime.now()
+        binding.tvSelectedTime.text = selectedAdminTime.format(timeFormatter)
+
+        binding.btnTimePickerContainer.setOnClickListener {
+            val timePicker = android.app.TimePickerDialog(
+                requireContext(),
+                { _, hourOfDay, minute ->
+                    selectedAdminTime = java.time.LocalTime.of(hourOfDay, minute)
+                    binding.tvSelectedTime.text = selectedAdminTime.format(timeFormatter)
+                },
+                selectedAdminTime.hour,
+                selectedAdminTime.minute,
+                true
+            )
+            timePicker.show()
+        }
+
+        // Setup Clinic Spinner
+        val defaultClinics = listOf(
+            "Sunway Medical Centre",
+            "Gleneagles Hospital Kuala Lumpur",
+            "KPJ Healthcare Damansara Specialist Hospital"
+        )
+        val fetchedClinics = viewModel.clinics.value?.map { it.clinic_name }?.filter { it.isNotBlank() } ?: emptyList()
+        val clinicNames = if (fetchedClinics.isNotEmpty()) fetchedClinics else defaultClinics
+
+        val clinicOptions = mutableListOf("Select Clinic / Hospital (Optional)")
+        clinicOptions.addAll(clinicNames)
+        clinicOptions.add("Other / Custom Clinic")
+
+        val spinnerAdapter = android.widget.ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_item,
+            clinicOptions
+        )
+        spinnerAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerClinic.adapter = spinnerAdapter
+
+        binding.spinnerClinic.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: android.widget.AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (position == clinicOptions.size - 1) { // "Other / Custom Clinic"
+                    binding.tilCustomClinic.visibility = View.VISIBLE
+                } else {
+                    binding.tilCustomClinic.visibility = View.GONE
+                }
+            }
+
+            override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+        }
+
+        binding.btnConfirmMarkTaken.setOnClickListener {
+            val chosenClinic = if (binding.tilCustomClinic.visibility == View.VISIBLE &&
+                !binding.etCustomClinic.text.isNullOrBlank()) {
+                binding.etCustomClinic.text.toString().trim()
+            } else if (binding.spinnerClinic.selectedItemPosition > 0 &&
+                binding.spinnerClinic.selectedItemPosition < clinicOptions.size - 1) {
+                clinicOptions[binding.spinnerClinic.selectedItemPosition]
+            } else {
+                null
+            }
+
+            val userNotes = binding.etVaccineNotes.text?.toString()?.trim()
+            val dateTime = java.time.LocalDateTime.of(selectedAdminDate, selectedAdminTime)
+            val zonedDateTime = dateTime.atZone(java.time.ZoneId.systemDefault())
+
             viewModel.markVaccineAsTaken(
                 childId = item.childId,
                 vaccineId = item.vaccineId,
-                notes = "Marked as taken on ${LocalDate.now().format(dateFormatter)}"
+                administeredDate = selectedAdminDate.format(dbDateFormatter),
+                administeredAt = zonedDateTime.format(dbDateTimeFormatter),
+                clinicName = chosenClinic,
+                notes = userNotes
             )
+
+            Toast.makeText(requireContext(), "Vaccine marked as completed!", Toast.LENGTH_SHORT).show()
             dialog.dismiss()
-            Toast.makeText(requireContext(), "Vaccine marked as taken!", Toast.LENGTH_SHORT).show()
         }
 
         binding.ibClose.setOnClickListener {
@@ -651,6 +762,68 @@ class VaccineSelectionAdapter(
     }
 }
 
+// ── Child Vaccine Group Adapter ──────────────────────────────────────────
+
+class ChildVaccineGroupAdapter(
+    private val onVaccineClick: (VaccineScheduleItem) -> Unit
+) : RecyclerView.Adapter<ChildVaccineGroupAdapter.GroupViewHolder>() {
+
+    private var groups: List<ChildVaccineGroup> = emptyList()
+
+    fun submitList(newGroups: List<ChildVaccineGroup>) {
+        groups = newGroups
+        notifyDataSetChanged()
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): GroupViewHolder {
+        val binding = ItemChildVaccineGroupBinding.inflate(
+            LayoutInflater.from(parent.context), parent, false
+        )
+        return GroupViewHolder(binding)
+    }
+
+    override fun onBindViewHolder(holder: GroupViewHolder, position: Int) {
+        holder.bind(groups[position])
+    }
+
+    override fun getItemCount(): Int = groups.size
+
+    inner class GroupViewHolder(
+        private val binding: ItemChildVaccineGroupBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(group: ChildVaccineGroup) {
+            val child = group.child
+            binding.tvGroupChildName.text = child.full_name ?: "Child"
+
+            val subtitleParts = mutableListOf<String>()
+            if (group.ageText.isNotEmpty()) {
+                subtitleParts.add(group.ageText)
+            }
+            subtitleParts.add("${group.completedCount}/${group.totalCount} completed")
+            binding.tvGroupChildSubtitle.text = subtitleParts.joinToString(" • ")
+
+            val isFemale = child.gender?.equals("Female", ignoreCase = true) == true
+            if (isFemale) {
+                binding.ivChildAvatar.setImageResource(R.drawable.ic_avatar_female)
+                binding.flChildAvatarContainer.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#FFF3E0"))
+            } else {
+                binding.ivChildAvatar.setImageResource(R.drawable.ic_avatar_male)
+                binding.flChildAvatarContainer.backgroundTintList =
+                    android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E0F7FA"))
+            }
+
+            val childVaccineAdapter = VaccineScheduleAdapter(onVaccineClick)
+            binding.rvChildVaccines.apply {
+                layoutManager = LinearLayoutManager(binding.root.context)
+                adapter = childVaccineAdapter
+            }
+            childVaccineAdapter.submitList(group.items)
+        }
+    }
+}
+
 // ── Vaccine Schedule Adapter ─────────────────────────────────────────────
 
 class VaccineScheduleAdapter(
@@ -658,25 +831,9 @@ class VaccineScheduleAdapter(
 ) : RecyclerView.Adapter<VaccineScheduleAdapter.ViewHolder>() {
 
     private var allItems: List<VaccineScheduleItem> = emptyList()
-    private var filteredItems: List<VaccineScheduleItem> = emptyList()
-    private var filterStatus: VaccineStatus? = null
 
     fun submitList(newItems: List<VaccineScheduleItem>) {
         allItems = newItems
-        applyFilter()
-    }
-
-    fun filterByStatus(status: VaccineStatus?) {
-        filterStatus = status
-        applyFilter()
-    }
-
-    private fun applyFilter() {
-        filteredItems = if (filterStatus == null) {
-            allItems
-        } else {
-            allItems.filter { it.status == filterStatus }
-        }
         notifyDataSetChanged()
     }
 
@@ -688,13 +845,13 @@ class VaccineScheduleAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(filteredItems[position])
+        holder.bind(allItems[position])
         holder.itemView.setOnClickListener {
-            onItemClick(filteredItems[position])
+            onItemClick(allItems[position])
         }
     }
 
-    override fun getItemCount(): Int = filteredItems.size
+    override fun getItemCount(): Int = allItems.size
 
     class ViewHolder(
         private val binding: ItemVaccineScheduleBinding
@@ -707,7 +864,7 @@ class VaccineScheduleAdapter(
 
             when (item.status) {
                 VaccineStatus.DONE -> {
-                    iconRes = R.drawable.ic_check_circle
+                    iconRes = R.drawable.ic_check
                     iconBgColor = R.color.success_soft
                     textColor = R.color.success
                 }
@@ -724,17 +881,13 @@ class VaccineScheduleAdapter(
             }
 
             binding.ivStatusIcon.setImageResource(iconRes)
-            binding.ivStatusIcon.setBackgroundColor(
+            binding.cvStatusIconBackground.setCardBackgroundColor(
                 ContextCompat.getColor(binding.root.context, iconBgColor)
             )
 
             binding.tvVaccineName.text = item.vaccineName
-            binding.tvVaccineName.setTextColor(
-                ContextCompat.getColor(binding.root.context, textColor)
-            )
 
-            binding.tvChildNameBadge.visibility = View.VISIBLE
-            binding.tvChildNameBadge.text = item.childName
+            binding.tvChildNameBadge.visibility = View.GONE
 
             binding.tvVaccineAge.text = item.ageRequirement
 

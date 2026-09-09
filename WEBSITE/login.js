@@ -38,28 +38,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const userRole = userData.role ? userData.role.toLowerCase() : '';
 
         if (userRole === 'staff') {
-            // Fetch clinicid and clinic details from CLINIC_STAFF and CLINIC
-            const { data: staffData } = await window.supabaseClient
-                .from('CLINIC_STAFF')
-                .select(`
-                    clinicid,
-                    CLINIC (
-                        clinicid,
-                        clinic_name,
-                        address,
-                        phone_number,
-                        email
-                    )
-                `)
-                .eq('userid', userData.userid)
-                .single();
-                
-            if (staffData && staffData.clinicid) {
-                userData.clinicid = staffData.clinicid;
-                if (staffData.CLINIC) {
-                    userData.clinic = staffData.CLINIC;
-                    userData.clinic_name = staffData.CLINIC.clinic_name;
+            // Fetch clinicid from CLINIC_STAFF and details from CLINIC
+            try {
+                const { data: staffData, error: staffErr } = await window.supabaseClient
+                    .from('CLINIC_STAFF')
+                    .select('*')
+                    .eq('userid', userData.userid)
+                    .maybeSingle();
+
+                if (staffData && staffData.clinicid) {
+                    userData.clinicid = staffData.clinicid;
+                    userData.role_at_clinic = staffData.role_at_clinic;
+
+                    // Fetch clinic details from CLINIC table
+                    const { data: clinicData, error: clinicErr } = await window.supabaseClient
+                        .from('CLINIC')
+                        .select('*')
+                        .eq('clinicid', staffData.clinicid)
+                        .maybeSingle();
+
+                    if (clinicData) {
+                        userData.clinic = clinicData;
+                        userData.clinic_name = clinicData.clinic_name;
+                    }
                 }
+            } catch (err) {
+                console.error("Error retrieving clinic details:", err);
             }
 
             // Successfully logged in and authorized

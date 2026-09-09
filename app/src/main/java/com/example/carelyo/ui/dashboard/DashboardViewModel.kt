@@ -140,21 +140,21 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     }.decodeList<Child>()
             }
 
-            println("[$TAG]: Found ${children.size} children")
-            children.forEach { child ->
-                println("[$TAG]: Child: ${child.full_name}, ID: ${child.ChildID}")
+            val activeChildren = children.filter { it.status != com.example.carelyo.data.entity.ChildStatus.INACTIVE.value }
+            println("[$TAG]: Found ${activeChildren.size} active children")
+            activeChildren.forEach { child ->
+                println("[$TAG]: Child: ${child.full_name}, ID: ${child.ChildID}, Status: ${child.status}")
             }
 
-            cachedChildren = children
+            cachedChildren = activeChildren
             lastFetchTime = System.currentTimeMillis()
 
-            _childrenList.postValue(children)
+            _childrenList.postValue(activeChildren)
             _isLoading.postValue(false)
 
-            if (children.isNotEmpty()) {
-                println("[$TAG]: Loading data for first child: ${children[0].full_name}")
-                // Fetch data for the first child by default
-                fetchAllDataForChild(children[0].ChildID)
+            if (activeChildren.isNotEmpty()) {
+                println("[$TAG]: Loading data for first child: ${activeChildren[0].full_name}")
+                fetchAllDataForChild(activeChildren[0].ChildID)
             } else {
                 println("[$TAG]: No children found for this parent")
                 _errorMessage.postValue("No children registered for this account")
@@ -170,25 +170,39 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
     private fun fetchUnreadRemindersCount(parentId: Int) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val reminders = SupabaseClient.client.postgrest["REMINDER"]
+                // Fetch unread count from Supabase NOTIFICATION table (where is_read is null or false)
+                val userNotifications = SupabaseClient.client.postgrest["NOTIFICATION"]
                     .select {
                         filter {
-                            eq("parentid", parentId)
-                            eq("noti_status", "Unread")
+                            eq("userid", parentId)
                         }
-                    }.decodeList<Reminder>()
+                    }.decodeList<Notification>()
 
-                val count = reminders.size
+                val count = userNotifications.count { it.is_read != true }
                 _unreadRemindersCount.postValue(count)
 
                 // Save to SharedPreferences for badge visibility
                 val prefs = getApplication<Application>().getSharedPreferences("carelyo_prefs", Context.MODE_PRIVATE)
                 prefs.edit().putInt("unread_count", count).apply()
 
-                println("[$TAG]: Unread reminders count: $count")
+                println("[$TAG]: Unread notifications count from NOTIFICATION table: $count")
             } catch (e: Exception) {
-                println("[$TAG]: Error fetching reminders count: ${e.localizedMessage}")
-                _unreadRemindersCount.postValue(0)
+                println("[$TAG]: Error fetching NOTIFICATION count, checking REMINDER fallback: ${e.localizedMessage}")
+                try {
+                    val reminders = SupabaseClient.client.postgrest["REMINDER"]
+                        .select {
+                            filter {
+                                eq("parentid", parentId)
+                            }
+                        }.decodeList<Reminder>()
+
+                    val count = reminders.count { it.noti_status.equals("Unread", ignoreCase = true) }
+                    _unreadRemindersCount.postValue(count)
+                    val prefs = getApplication<Application>().getSharedPreferences("carelyo_prefs", Context.MODE_PRIVATE)
+                    prefs.edit().putInt("unread_count", count).apply()
+                } catch (_: Exception) {
+                    _unreadRemindersCount.postValue(0)
+                }
             }
         }
     }
@@ -294,8 +308,13 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
 
             val upcomingVaccines = mutableListOf<UpcomingVaccination>()
             childVaccines.forEach { cv ->
-                // Check if vaccine is pending or overdue
-                if (cv.status == "Pending" || cv.status == "Overdue" || cv.status == "Complete") {
+                // Check if vaccine is scheduled, due, or overdue
+                if (cv.status in listOf(
+                        VaccineStatusEnum.SCHEDULED.value,
+                        VaccineStatusEnum.DUE.value,
+                        VaccineStatusEnum.OVERDUE.value
+                    )
+                ) {
                     val vaccine = allVaccines.find { it.VaccineID == cv.VaccineID }
                     vaccine?.let {
                         val vaccination = UpcomingVaccination(
@@ -379,6 +398,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
                     filter {
                         eq("childid", childId)
                         gte("appointment_date", today)
+                        eq("status", AppointmentStatus.SCHEDULED.value)
                     }
                 }.decodeList<Appointment>()
 
@@ -408,7 +428,7 @@ class DashboardViewModel(application: Application) : AndroidViewModel(applicatio
         return try {
             println("[$TAG]: Fetching allergies for child $childId")
 
-            val allergies = SupabaseClient.client.postgrest["ALLERGIE"]
+            val allergies = SupabaseClient.client.postgrest["ALLERGIES"]
                 .select {
                     filter {
                         eq("childid", childId)

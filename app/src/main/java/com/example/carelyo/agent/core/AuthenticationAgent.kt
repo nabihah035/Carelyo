@@ -26,7 +26,11 @@ class AuthenticationAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     password = password,
                     full_name = fullName,
                     phone_number = phoneNumber,
-                    role = role
+                    role = if (role.equals(com.example.carelyo.data.entity.UserRole.STAFF.value, ignoreCase = true)) {
+                        com.example.carelyo.data.entity.UserRole.STAFF.value
+                    } else {
+                        com.example.carelyo.data.entity.UserRole.PARENT.value
+                    }
                 )
 
                 val savedUser = SupabaseClient.client.postgrest["USER"]

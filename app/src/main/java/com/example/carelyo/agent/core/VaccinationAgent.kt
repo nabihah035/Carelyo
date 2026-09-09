@@ -7,6 +7,7 @@ import com.example.carelyo.api.supabase.SupabaseClient
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.entity.ChildVaccine
 import com.example.carelyo.data.entity.Vaccination
+import com.example.carelyo.data.entity.VaccineStatusEnum
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -147,7 +148,7 @@ class VaccinationAgent(private val scope: CoroutineScope) : CarelyoAgent {
             val ageInMonths = ChronoUnit.MONTHS.between(birthDate, currentDate).toInt()
 
             val childCompletedVaccines = cachedChildVaccines.filter {
-                it.ChildID == child.ChildID && it.status?.equals("Administered", ignoreCase = true) == true
+                it.ChildID == child.ChildID && it.status?.equals(VaccineStatusEnum.COMPLETED.value, ignoreCase = true) == true
             }
 
             val expectedVaccines = getExpectedVaccinesForAge(ageInMonths)
@@ -251,7 +252,7 @@ class VaccinationAgent(private val scope: CoroutineScope) : CarelyoAgent {
         val targetedVaccines = getTargetedVaccinesByAge(ageInMonths)
 
         val childCompletedVaccines = cachedChildVaccines.filter {
-            it.ChildID == child.ChildID && it.status?.equals("Administered", ignoreCase = true) == true
+            it.ChildID == child.ChildID && it.status?.equals(VaccineStatusEnum.COMPLETED.value, ignoreCase = true) == true
         }
 
         val completedVaccineNames = childCompletedVaccines.mapNotNull { childVaccine ->

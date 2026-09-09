@@ -8,23 +8,27 @@ data class DoctorVisit(
     @SerialName("docvisitid")
     val DocVisitID: Int = 0,
     @SerialName("childid")
-    val ChildID: Int,
+    val ChildID: Int? = null,
     val visit_date: String? = null,
+    val raw_notes: String? = null,
+    val created_at: String? = null,
+    val clinicid: Int? = null,
+    val userid: Int? = null,
+    val summary: String? = null,
+    // Optional compatibility fields
     val clinic_name: String? = null,
     val doctor_name: String? = null,
-    val raw_notes: String? = null,
     val ai_summary: String? = null,
-    val summary_language: String? = null,
-    val created_at: String? = null
+    val summary_language: String? = null
 )
 
 @Serializable
 data class DoctorVisitInsert(
-    @SerialName("childid") val ChildID: Int,
-    val visit_date: String,
-    val clinic_name: String,
-    val doctor_name: String,
-    val raw_notes: String,
-    val ai_summary: String,
-    val summary_language: String
+    @SerialName("childid")
+    val ChildID: Int? = null,
+    val visit_date: String? = null,
+    val raw_notes: String? = null,
+    val clinicid: Int? = null,
+    val userid: Int? = null,
+    val summary: String? = null
 )

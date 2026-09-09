@@ -170,7 +170,44 @@
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- Section 3: Notes Card -->
+    <!-- Section 3: Clinic Card (Shown if clinic exists) -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cvClinic"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#F8FAFC"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:layout_constraintTop_toBottomOf="@+id/cvDateGiven">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Administered At"
+                android:textColor="#64748B"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvClinicValue"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:textColor="#0F172A"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                tools:text="Sunway Medical Centre" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Section 4: Notes Card -->
     <androidx.cardview.widget.CardView
         android:id="@+id/cvNotes"
         android:layout_width="match_parent"
@@ -179,7 +216,7 @@
         app:cardBackgroundColor="#F8FAFC"
         app:cardCornerRadius="16dp"
         app:cardElevation="0dp"
-        app:layout_constraintTop_toBottomOf="@+id/cvDateGiven">
+        app:layout_constraintTop_toBottomOf="@+id/cvClinic">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -218,7 +255,7 @@
         android:textSize="16sp"
         android:textStyle="bold"
         android:visibility="gone"
-        app:backgroundTint="#009688"
+        app:backgroundTint="#008B75"
         app:cornerRadius="16dp"
         app:icon="@drawable/ic_check"
         app:iconGravity="textStart"

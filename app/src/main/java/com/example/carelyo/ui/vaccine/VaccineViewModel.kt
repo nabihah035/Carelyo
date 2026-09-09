@@ -10,8 +10,12 @@ import com.example.carelyo.agent.infra.CarelyoMessage
 import com.example.carelyo.agent.infra.CarelyoMessageBroker
 import com.example.carelyo.data.entity.Child
 import com.example.carelyo.data.entity.ChildVaccine
+import com.example.carelyo.data.entity.ChildVaccineInsert
+import com.example.carelyo.data.entity.ChildVaccineUpdate
+import com.example.carelyo.data.entity.Clinic
 import com.example.carelyo.data.entity.Reminder
 import com.example.carelyo.data.entity.Vaccination
+import com.example.carelyo.data.entity.VaccineStatusEnum
 import com.example.carelyo.api.supabase.SupabaseClient
 import com.example.carelyo.data.session.SessionManager
 import io.github.jan.supabase.postgrest.postgrest
@@ -36,6 +40,9 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
 
     private val _availableVaccines = MutableLiveData<List<Vaccination>>()
     val availableVaccines: LiveData<List<Vaccination>> = _availableVaccines
+
+    private val _clinics = MutableLiveData<List<Clinic>>()
+    val clinics: LiveData<List<Clinic>> = _clinics
 
     private val _isFormReady = MutableLiveData<Boolean>()
     val isFormReady: LiveData<Boolean> = _isFormReady
@@ -112,6 +119,17 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                         .decodeList<ChildVaccine>()
                 }
 
+                if (_clinics.value.isNullOrEmpty()) {
+                    try {
+                        val clinicList = SupabaseClient.client.postgrest["CLINIC"]
+                            .select()
+                            .decodeList<Clinic>()
+                        _clinics.postValue(clinicList)
+                    } catch (ce: Exception) {
+                        ce.printStackTrace()
+                    }
+                }
+
                 isLoadingData = false
                 recalculate()
             } catch (e: Exception) {
@@ -131,8 +149,16 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
     fun addChildVaccine(childVaccine: ChildVaccine) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                val insertPayload = ChildVaccineInsert(
+                    ChildID = childVaccine.ChildID ?: 0,
+                    VaccineID = childVaccine.VaccineID ?: 0,
+                    status = childVaccine.status,
+                    administered_date = childVaccine.administered_date,
+                    administered_at = childVaccine.administered_at,
+                    notes = childVaccine.notes
+                )
                 val result = SupabaseClient.client.postgrest["CHILD_VACCINE"]
-                    .insert(childVaccine) { select() }
+                    .insert(insertPayload) { select() }
                     .decodeList<ChildVaccine>()
                     .firstOrNull()
 
@@ -183,7 +209,7 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                         ParentID = parentId,
                         reminder_type = "vaccine",
                         scheduled_at = scheduledAt,
-                        is_sent = (childVaccine.status == "Done" || childVaccine.status == "Completed")
+                        is_sent = (childVaccine.status == com.example.carelyo.data.entity.VaccineStatusEnum.COMPLETED.value)
                     )
 
                     SupabaseClient.client.postgrest["REMINDER"]
@@ -196,57 +222,77 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun markVaccineAsTaken(childId: Int, vaccineId: Int, notes: String) {
+    fun markVaccineAsTaken(
+        childId: Int,
+        vaccineId: Int,
+        administeredDate: String? = null,
+        administeredAt: String? = null,
+        clinicName: String? = null,
+        notes: String? = null
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val existingRecord = allChildVaccines.find {
                     it.ChildID == childId && it.VaccineID == vaccineId
                 }
 
-                if (existingRecord != null) {
-                    val today = LocalDate.now().format(dateFormatter)
-                    val now = LocalDateTime.now().atZone(ZoneId.systemDefault()).format(dbDateTimeFormatter)
+                val date = administeredDate ?: LocalDate.now().format(dbDateFormatter)
+                val at = administeredAt ?: LocalDateTime.now().atZone(ZoneId.systemDefault()).format(dbDateTimeFormatter)
 
-                    val updatedRecord = existingRecord.copy(
-                        status = "Done",
-                        administered_date = today,
-                        administered_at = now,
-                        notes = if (existingRecord.notes?.isNotEmpty() == true)
-                            "${existingRecord.notes}\n$notes"
-                        else notes
+                val clinicLine = if (!clinicName.isNullOrBlank()) "Clinic: $clinicName" else null
+                val userNotesLine = if (!notes.isNullOrBlank()) notes.trim() else null
+                val formattedNewNotes = listOfNotNull(clinicLine, userNotesLine).joinToString("\n")
+
+                if (existingRecord != null) {
+                    val fullNotes = if (!existingRecord.notes.isNullOrBlank() && formattedNewNotes.isNotBlank()) {
+                        "${existingRecord.notes}\n$formattedNewNotes"
+                    } else if (formattedNewNotes.isNotBlank()) {
+                        formattedNewNotes
+                    } else {
+                        existingRecord.notes ?: "Completed"
+                    }
+
+                    val updatePayload = ChildVaccineUpdate(
+                        status = VaccineStatusEnum.COMPLETED.value,
+                        administered_date = date,
+                        administered_at = at,
+                        notes = fullNotes
                     )
 
                     SupabaseClient.client.postgrest["CHILD_VACCINE"]
-                        .update(updatedRecord) {
+                        .update(updatePayload) {
                             filter {
                                 eq("childvaccineid", existingRecord.ChildVaccineID ?: 0)
                             }
                         }
 
+                    val updatedRecord = existingRecord.copy(
+                        status = VaccineStatusEnum.COMPLETED.value,
+                        administered_date = date,
+                        administered_at = at,
+                        notes = fullNotes
+                    )
+
                     allChildVaccines = allChildVaccines.map {
                         if (it.ChildVaccineID == existingRecord.ChildVaccineID) updatedRecord else it
                     }
                 } else {
-                    val today = LocalDate.now().format(dateFormatter)
-                    val now = LocalDateTime.now().atZone(ZoneId.systemDefault()).format(dbDateTimeFormatter)
-
-                    val newRecord = ChildVaccine(
+                    val insertPayload = ChildVaccineInsert(
                         ChildID = childId,
                         VaccineID = vaccineId,
-                        status = "Done",
-                        administered_date = today,
-                        administered_at = now,
-                        notes = notes
+                        status = VaccineStatusEnum.COMPLETED.value,
+                        administered_date = date,
+                        administered_at = at,
+                        notes = if (formattedNewNotes.isNotBlank()) formattedNewNotes else "Completed"
                     )
 
                     val result = SupabaseClient.client.postgrest["CHILD_VACCINE"]
-                        .insert(newRecord) { select() }
+                        .insert(insertPayload) { select() }
                         .decodeList<ChildVaccine>()
                         .firstOrNull()
 
                     if (result != null) {
                         allChildVaccines = allChildVaccines + result
-                        // Create reminder when marking as taken
                         createVaccineReminder(result)
                     }
                 }
@@ -255,7 +301,6 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                 markRemindersAsSent(childId, vaccineId)
 
                 recalculate()
-                Toast.makeText(getApplication(), "Vaccine marked as taken!", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 _vaccineState.postValue(VaccineState.Error(e.message ?: "Failed to update vaccine"))
             }
@@ -324,6 +369,7 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
 
                 val currentDate = LocalDate.now()
                 val allItems = mutableListOf<VaccineScheduleItem>()
+                val childGroups = mutableListOf<ChildVaccineGroup>()
                 var totalDone = 0
                 var totalUp = 0
                 var totalOver = 0
@@ -331,6 +377,8 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                 for (child in targetChildren) {
                     val birthDate = parseDate(child.date_of_birth) ?: continue
                     val ageInMonths = ChronoUnit.MONTHS.between(birthDate, currentDate).toInt()
+                    val childItems = mutableListOf<VaccineScheduleItem>()
+                    var childDoneCount = 0
 
                     val allVaccinesForChild = allVaccinations.sortedBy { it.recommended_age_weeks }
 
@@ -339,10 +387,10 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
 
                         val status = if (cv != null) {
                             when (cv.status?.lowercase()) {
-                                "done", "completed" -> VaccineStatus.DONE
-                                "upcoming" -> VaccineStatus.UPCOMING
+                                "done", "completed", "skipped" -> VaccineStatus.DONE
+                                "upcoming", "scheduled", "due" -> VaccineStatus.UPCOMING
                                 "overdue" -> VaccineStatus.OVERDUE
-                                else -> VaccineStatus.DONE
+                                else -> VaccineStatus.UPCOMING
                             }
                         } else {
                             val isOverdue = vaccine.recommended_age_weeks?.let { weeks ->
@@ -351,9 +399,14 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                             if (isOverdue) VaccineStatus.OVERDUE else VaccineStatus.UPCOMING
                         }
 
-                        if (status == VaccineStatus.DONE) totalDone++
-                        else if (status == VaccineStatus.UPCOMING) totalUp++
-                        else totalOver++
+                        if (status == VaccineStatus.DONE) {
+                            totalDone++
+                            childDoneCount++
+                        } else if (status == VaccineStatus.UPCOMING) {
+                            totalUp++
+                        } else {
+                            totalOver++
+                        }
 
                         val givenDate = if (status == VaccineStatus.DONE) {
                             cv?.administered_date?.let {
@@ -379,7 +432,7 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                             }
                         } ?: "Unknown"
 
-                        allItems.add(
+                        childItems.add(
                             VaccineScheduleItem(
                                 vaccineId = vaccine.VaccineID,
                                 vaccineName = vaccine.vaccine_name ?: "Unknown",
@@ -394,6 +447,19 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                             )
                         )
                     }
+
+                    allItems.addAll(childItems)
+
+                    val childAgeString = child.date_of_birth?.let { calculateAge(it) } ?: ""
+                    childGroups.add(
+                        ChildVaccineGroup(
+                            child = child,
+                            ageText = childAgeString,
+                            completedCount = childDoneCount,
+                            totalCount = childItems.size,
+                            items = childItems
+                        )
+                    )
                 }
 
                 val sorted = allItems.sortedWith(
@@ -419,6 +485,7 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                         overdueCount = totalOver,
                         percentage = progress,
                         scheduleItems = sorted,
+                        childGroups = childGroups,
                         progressLabel = if (filterChild != null) "${filterChild!!.full_name} – Progress" else "All Children – Progress",
                         isAllChildren = (filterChild == null)
                     )
@@ -426,6 +493,22 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: Exception) {
                 _vaccineState.postValue(VaccineState.Error(e.message ?: "Unknown error"))
             }
+        }
+    }
+
+    private fun calculateAge(dateOfBirth: String): String {
+        return try {
+            val birthDate = LocalDate.parse(dateOfBirth)
+            val currentDate = LocalDate.now()
+            val years = java.time.Period.between(birthDate, currentDate).years
+            val months = java.time.Period.between(birthDate, currentDate).months
+            when {
+                years > 0 -> "$years year${if (years > 1) "s" else ""} ${months} month${if (months > 1) "s" else ""}"
+                months > 0 -> "$months month${if (months > 1) "s" else ""} old"
+                else -> "Newborn"
+            }
+        } catch (e: Exception) {
+            ""
         }
     }
 
@@ -450,6 +533,14 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
 
 // ── State Classes ──────────────────────────────────────────────────────
 
+data class ChildVaccineGroup(
+    val child: Child,
+    val ageText: String,
+    val completedCount: Int,
+    val totalCount: Int,
+    val items: List<VaccineScheduleItem>
+)
+
 sealed class VaccineState {
     object Loading : VaccineState()
     data class Success(
@@ -458,6 +549,7 @@ sealed class VaccineState {
         val overdueCount: Int,
         val percentage: Int,
         val scheduleItems: List<VaccineScheduleItem>,
+        val childGroups: List<ChildVaccineGroup> = emptyList(),
         val progressLabel: String,
         val isAllChildren: Boolean
     ) : VaccineState()

@@ -530,11 +530,14 @@ tbody tr:hover {
   justify-content: space-between;
   box-shadow: var(--shadow-sm);
   transition: var(--transition);
+  cursor: pointer;
+  user-select: none;
 }
 
 .dashboard-stat-card:hover {
   box-shadow: var(--shadow-md);
-  border-color: #cbd5e1;
+  border-color: #94a3b8;
+  transform: translateY(-2px);
 }
 
 .stat-number {

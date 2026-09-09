@@ -17,8 +17,9 @@ val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
-val supabaseUrl = localProperties.getProperty("SUPABASE_URL") ?: ""
-val supabaseKey = localProperties.getProperty("SUPABASE_KEY") ?: ""
+val supabaseUrl = localProperties.getProperty("SUPABASE_URL")?.trim()?.removeSurrounding("\"") ?: ""
+val supabaseKey = localProperties.getProperty("SUPABASE_KEY")?.trim()?.removeSurrounding("\"") ?: ""
+
 
 android {
     namespace = "com.example.carelyo"

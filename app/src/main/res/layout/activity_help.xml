@@ -67,6 +67,16 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <ImageButton
+            android:id="@+id/btnNewChat"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_rounded_square_button"
+            android:src="@drawable/ic_add"
+            android:contentDescription="New Chat"
+            app:tint="#4A5568" />
+
     </LinearLayout>
 
     <View

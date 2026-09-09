@@ -1,11 +1,30 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const sessionData = localStorage.getItem('carelyo_admin_session');
     if (!sessionData) {
         window.location.href = 'login.html';
         return;
     }
-    const userSession = JSON.parse(sessionData);
-    const clinicId = userSession.clinicid;
+    let userSession = JSON.parse(sessionData);
+    let clinicId = userSession.clinicid || (userSession.clinic ? userSession.clinic.clinicid : null);
+
+    // If clinicId is not yet cached in session, resolve it from CLINIC_STAFF
+    if (!clinicId && userSession.userid && window.supabaseClient) {
+        try {
+            const { data: staffData } = await window.supabaseClient
+                .from('CLINIC_STAFF')
+                .select('*')
+                .eq('userid', userSession.userid)
+                .maybeSingle();
+
+            if (staffData && staffData.clinicid) {
+                clinicId = staffData.clinicid;
+                userSession.clinicid = clinicId;
+                localStorage.setItem('carelyo_admin_session', JSON.stringify(userSession));
+            }
+        } catch (e) {
+            console.warn("Could not resolve clinicId from CLINIC_STAFF:", e);
+        }
+    }
 
     setupHeader(userSession);
     loadDashboardData(clinicId, userSession);
@@ -47,20 +66,43 @@ async function loadDashboardData(clinicId, userSession) {
         const { count: apptTodayCount } = await apptCountQuery;
         document.getElementById('stat-appointments-today').innerText = (apptTodayCount || 0).toLocaleString();
 
-        // 2. Stat: Registered Children at this clinic
+        // 2. Stat: Registered Children at this clinic (via CLINIC_PATIENT)
         let childrenCount = 0;
-        if (clinicId) {
-            const { data: clinicChildren } = await window.supabaseClient
-                .from('APPOINTMENT')
-                .select('childid')
-                .eq('clinicid', clinicId);
+        let clinicChildIds = [];
+        let clinicUserIds = [];
 
-            if (clinicChildren && clinicChildren.length > 0) {
-                const uniqueIds = new Set(clinicChildren.map(c => c.childid).filter(Boolean));
-                childrenCount = uniqueIds.size;
+        if (clinicId) {
+            try {
+                const { data: clinicPatients, error: cpErr } = await window.supabaseClient
+                    .from('CLINIC_PATIENT')
+                    .select('childid, userid')
+                    .eq('clinicid', clinicId);
+
+                if (!cpErr && clinicPatients && clinicPatients.length > 0) {
+                    clinicChildIds = [...new Set(clinicPatients.map(p => p.childid).filter(Boolean))];
+                    clinicUserIds = [...new Set(clinicPatients.map(p => p.userid).filter(Boolean))];
+                    childrenCount = clinicChildIds.length;
+                }
+            } catch (e) {
+                console.warn("Could not fetch from CLINIC_PATIENT:", e);
+            }
+
+            // Fallback: If CLINIC_PATIENT has no rows yet, check APPOINTMENT for this clinic
+            if (childrenCount === 0) {
+                const { data: clinicAppts } = await window.supabaseClient
+                    .from('APPOINTMENT')
+                    .select('childid, parentid')
+                    .eq('clinicid', clinicId);
+
+                if (clinicAppts && clinicAppts.length > 0) {
+                    clinicChildIds = [...new Set(clinicAppts.map(c => c.childid).filter(Boolean))];
+                    clinicUserIds = [...new Set(clinicAppts.map(c => c.parentid).filter(Boolean))];
+                    childrenCount = clinicChildIds.length;
+                }
             }
         }
-        if (childrenCount === 0) {
+
+        if (childrenCount === 0 && !clinicId) {
             // Fallback to overall registered children count
             const { count: totalChildren } = await window.supabaseClient
                 .from('CHILD')
@@ -69,30 +111,47 @@ async function loadDashboardData(clinicId, userSession) {
         }
         document.getElementById('stat-registered-children').innerText = childrenCount.toLocaleString();
 
-        // 3. Stat: Overdue Vaccinations
+        // 3. Stat: Overdue Vaccinations (filtered by this clinic's children)
         let overdueQuery = window.supabaseClient
             .from('CHILD_VACCINE')
             .select('childvaccineid', { count: 'exact', head: true })
             .ilike('status', 'overdue');
+
+        if (clinicId && clinicChildIds.length > 0) {
+            overdueQuery = overdueQuery.in('childid', clinicChildIds);
+        }
         const { count: overdueCount } = await overdueQuery;
         const totalOverdue = overdueCount || 0;
         document.getElementById('stat-overdue-vaccines').innerText = totalOverdue.toLocaleString();
 
-        // 4. Stat: Pending Reminders
+        // 4. Stat: Pending Reminders (filtered by this clinic's children or parents)
+        let reminderQuery = window.supabaseClient
+            .from('REMINDER')
+            .select('remindid', { count: 'exact', head: true })
+            .eq('is_sent', false);
+
+        if (clinicId) {
+            if (clinicChildIds.length > 0) {
+                reminderQuery = reminderQuery.in('childid', clinicChildIds);
+            } else if (clinicUserIds.length > 0) {
+                reminderQuery = reminderQuery.in('parentid', clinicUserIds);
+            }
+        }
+
         let pendingRemindersCount = 0;
         try {
-            const { count: remCount, error: remError } = await window.supabaseClient
-                .from('REMINDER')
-                .select('remindid', { count: 'exact', head: true })
-                .eq('is_sent', false);
+            const { count: remCount, error: remError } = await reminderQuery;
             if (!remError && remCount !== null) {
                 pendingRemindersCount = remCount;
             } else {
-                // Try noti_status if is_sent didn't match
-                const { count: altCount } = await window.supabaseClient
+                let altQuery = window.supabaseClient
                     .from('REMINDER')
                     .select('remindid', { count: 'exact', head: true })
                     .ilike('noti_status', 'pending');
+                if (clinicId && clinicChildIds.length > 0) {
+                    altQuery = altQuery.in('childid', clinicChildIds);
+                }
+                const { count: altCount } = await altQuery;
                 pendingRemindersCount = altCount || 0;
             }
         } catch (e) {

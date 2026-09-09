@@ -42,6 +42,38 @@ async function loadParents(searchQuery = '') {
             .select('*, CHILD(count)', { count: 'exact' })
             .ilike('role', 'parent');
 
+        // Filter parents belonging to this clinic via CLINIC_PATIENT
+        if (clinicId) {
+            try {
+                const { data: clinicPatients } = await window.supabaseClient
+                    .from('CLINIC_PATIENT')
+                    .select('userid')
+                    .eq('clinicid', clinicId)
+                    .not('userid', 'is', null);
+
+                let clinicUserIds = clinicPatients ? clinicPatients.map(p => p.userid).filter(Boolean) : [];
+
+                // Fallback to APPOINTMENT if CLINIC_PATIENT has no rows yet
+                if (clinicUserIds.length === 0) {
+                    const { data: apptParents } = await window.supabaseClient
+                        .from('APPOINTMENT')
+                        .select('parentid')
+                        .eq('clinicid', clinicId)
+                        .not('parentid', 'is', null);
+                    if (apptParents) {
+                        clinicUserIds = apptParents.map(a => a.parentid).filter(Boolean);
+                    }
+                }
+
+                if (clinicUserIds.length > 0) {
+                    const uniqueUserIds = [...new Set(clinicUserIds)];
+                    query = query.in('userid', uniqueUserIds);
+                }
+            } catch (e) {
+                console.warn("Could not filter parents by CLINIC_PATIENT:", e);
+            }
+        }
+
         if (searchQuery) {
             query = query.or(`full_name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
         }
@@ -193,11 +225,26 @@ async function saveParent(e) {
             alert('Parent updated successfully!');
         } else {
             // Insert new
-            const { error } = await window.supabaseClient
+            const { data: newUsers, error } = await window.supabaseClient
                 .from('USER')
-                .insert([payload]);
+                .insert([payload])
+                .select();
             
             if (error) throw error;
+
+            if (clinicId && newUsers && newUsers.length > 0) {
+                try {
+                    await window.supabaseClient
+                        .from('CLINIC_PATIENT')
+                        .insert([{
+                            clinicid: clinicId,
+                            userid: newUsers[0].userid
+                        }]);
+                } catch (cpErr) {
+                    console.warn("Could not register parent in CLINIC_PATIENT:", cpErr);
+                }
+            }
+
             alert('Parent added successfully!');
         }
         
