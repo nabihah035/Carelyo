@@ -72,6 +72,16 @@ class VaccinationAgent(private val scope: CoroutineScope) : CarelyoAgent {
                     }
                 }
             }
+
+            // ── AUTO-SEED ALL VACCINES FOR A NEWLY REGISTERED CHILD ──
+            "REQUEST_SEED_CHILD_VACCINES" -> {
+                val childId = message.content["childId"] as? Int
+                if (childId != null && childId > 0) {
+                    scope.launch {
+                        seedAllVaccinesForChild(childId)
+                    }
+                }
+            }
         }
     }
 
@@ -101,6 +111,57 @@ class VaccinationAgent(private val scope: CoroutineScope) : CarelyoAgent {
             } catch (e: Exception) {
                 println("[$agentName]: Dropdown baseline retrieval failed: ${e.localizedMessage}")
                 sendFormErrorNotification(requestingAgent, e.localizedMessage ?: "Failed to read lookup data.")
+            }
+        }
+    }
+
+    private suspend fun seedAllVaccinesForChild(childId: Int) {
+        withContext(Dispatchers.IO) {
+            try {
+                println("[$agentName]: Starting vaccine seeding for new child ID: $childId")
+
+                // Ensure the master vaccine list is loaded
+                if (cachedVaccinations.isEmpty()) {
+                    cachedVaccinations = SupabaseClient.client.postgrest["VACCINATION"]
+                        .select()
+                        .decodeList<Vaccination>()
+                }
+
+                if (cachedVaccinations.isEmpty()) {
+                    println("[$agentName]: No vaccines found in VACCINATION table — seeding skipped.")
+                    return@withContext
+                }
+
+                println("[$agentName]: Seeding ${cachedVaccinations.size} vaccines for child ID: $childId")
+
+                // Batch-insert one CHILD_VACCINE row per vaccine with status = Scheduled
+                val seedPayloads = cachedVaccinations.map { vaccine ->
+                    com.example.carelyo.data.entity.ChildVaccineInsert(
+                        ChildID = childId,
+                        VaccineID = vaccine.VaccineID,
+                        status = VaccineStatusEnum.SCHEDULED.value
+                    )
+                }
+
+                SupabaseClient.client.postgrest["CHILD_VACCINE"].insert(seedPayloads)
+
+                // Invalidate the child-vaccine cache so next fetch includes the new rows
+                cachedChildVaccines = emptyList()
+
+                println("[$agentName]: Successfully seeded ${seedPayloads.size} vaccine entries for child ID: $childId")
+
+                // Notify any listening components that seeding is complete
+                CarelyoMessageBroker.passMessage(
+                    CarelyoMessage(
+                        sender = agentName,
+                        receiver = "BROADCAST",
+                        messageType = "INFORM_CHILD_VACCINE_SEEDING_DONE",
+                        content = mapOf("childId" to childId, "count" to seedPayloads.size)
+                    )
+                )
+            } catch (e: Exception) {
+                println("[$agentName]: Vaccine seeding failed for child ID $childId: ${e.localizedMessage}")
+                e.printStackTrace()
             }
         }
     }

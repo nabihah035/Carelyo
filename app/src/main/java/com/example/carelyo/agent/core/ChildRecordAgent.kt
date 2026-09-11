@@ -86,9 +86,29 @@ class ChildRecordAgent(private val scope: CoroutineScope) : CarelyoAgent {
                 println("[$agentName]: Inserting child with data: $childToInsert")
                 println("[$agentName]: Parent ID: ${child.Parent_ID}")
 
-                // Insert using the data class
-                val result = SupabaseClient.client.postgrest["CHILD"].insert(childToInsert)
-                println("[$agentName]: Insert successful. Result: $result")
+                // Insert and retrieve the DB-generated childid via select()
+                val insertedChild = SupabaseClient.client.postgrest["CHILD"]
+                    .insert(childToInsert) { select() }
+                    .decodeList<Child>()
+                    .firstOrNull()
+
+                println("[$agentName]: Insert successful. New child ID: ${insertedChild?.ChildID}")
+
+                // Auto-seed all vaccines for the newly created child
+                val newChildId = insertedChild?.ChildID
+                if (newChildId != null && newChildId > 0) {
+                    println("[$agentName]: Requesting vaccine seeding for child ID: $newChildId")
+                    CarelyoMessageBroker.passMessage(
+                        CarelyoMessage(
+                            sender = agentName,
+                            receiver = "VaccinationMonitoringAgent",
+                            messageType = "REQUEST_SEED_CHILD_VACCINES",
+                            content = mapOf("childId" to newChildId)
+                        )
+                    )
+                } else {
+                    println("[$agentName]: Warning — could not retrieve new child ID for vaccine seeding.")
+                }
 
                 // Refresh the parent collection stack so UI updates instantly
                 fetchChildProfilesForParent(child.Parent_ID)

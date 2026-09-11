@@ -1,64 +1,223 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vaccination Status - Carelyo Staff</title>
     <link rel="stylesheet" href="styles.css">
-    <!-- Phosphor Icons -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .vac-page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;flex-wrap:wrap;gap:12px}
+        .vac-page-title{font-size:22px;font-weight:700;color:#111827}
+        .vac-legend{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:13px;color:#374151}
+        .vac-legend-item{display:flex;align-items:center;gap:6px}
+        .dot{width:14px;height:14px;border-radius:50%;display:inline-block;flex-shrink:0}
+        .dot-completed{background:#10b981}
+        .dot-scheduled{background:transparent;border:2px solid #9ca3af}
+        .dot-due{background:transparent;border:2px solid #f59e0b}
+        .dot-overdue{background:#ef4444}
+        .dot-skipped{background:#d1d5db}
+        .vac-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:28px}
+        .vac-stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:22px 24px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+        .vac-stat-num{font-size:36px;font-weight:700;line-height:1;margin-bottom:6px}
+        .vac-stat-num.green{color:#10b981}
+        .vac-stat-num.orange{color:#f59e0b}
+        .vac-stat-num.red{color:#ef4444}
+        .vac-stat-num.gray{color:#9ca3af}
+        .vac-stat-label{font-size:15px;font-weight:600;color:#111827;margin-bottom:2px}
+        .vac-stat-sub{font-size:12px;color:#6b7280}
+        .vac-toolbar{display:flex;align-items:center;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+        .vac-search-wrap{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 14px;flex:1;min-width:200px}
+        .vac-search-wrap i{color:#9ca3af}
+        .vac-search-wrap input{border:none;outline:none;font-size:14px;color:#111827;background:transparent;width:100%;font-family:var(--font-family)}
+        .vac-search-wrap input::placeholder{color:#9ca3af}
+        .filter-tabs{display:flex;gap:6px}
+        .filter-tab{padding:7px 16px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;font-size:13px;font-weight:500;color:#374151;cursor:pointer;transition:all .15s}
+        .filter-tab:hover{background:#f1f5f9}
+        .filter-tab.active{background:var(--primary-color);color:#fff;border-color:var(--primary-color)}
+        .vac-table-wrap{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow-x:auto;margin-bottom:32px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+        .vac-table{width:100%;border-collapse:collapse;min-width:900px}
+        .vac-table thead th{font-size:12px;font-weight:600;color:#374151;padding:10px 8px 4px;text-align:center;background:#f9fafb;white-space:nowrap}
+        .vac-table thead th.child-col{text-align:left;padding-left:20px;min-width:180px}
+        .vac-table thead th.progress-col{min-width:100px}
+        .vac-table thead tr.age-row th{font-size:11px;font-weight:400;color:#9ca3af;padding-top:0;padding-bottom:8px;border-bottom:1px solid #e2e8f0}
+        .vac-table thead tr.name-row th{border-bottom:none}
+        .vac-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .12s}
+        .vac-table tbody tr:last-child{border-bottom:none}
+        .vac-table tbody tr:hover{background:#f8fafc}
+        .vac-table td{padding:12px 8px;text-align:center;font-size:13px}
+        .vac-table td.child-name{text-align:left;padding-left:20px;font-weight:600;color:#111827;font-size:13.5px}
+        .vac-table td.progress-col{padding-right:16px}
+        .cell-dot{width:16px;height:16px;border-radius:50%;display:inline-block;cursor:pointer;transition:transform .1s,box-shadow .1s}
+        .cell-dot:hover{transform:scale(1.3);box-shadow:0 0 0 3px rgba(0,140,165,.2)}
+        .cell-dot.completed{background:#10b981}
+        .cell-dot.scheduled{background:transparent;border:2px solid #9ca3af}
+        .cell-dot.due{background:transparent;border:2px solid #f59e0b}
+        .cell-dot.overdue{background:#ef4444}
+        .cell-dot.skipped{background:#d1d5db}
+        .cell-dot.na{background:transparent;border:2px solid #e5e7eb;cursor:default}
+        .progress-bar-wrap{display:flex;align-items:center;gap:8px;min-width:80px}
+        .progress-bar-track{flex:1;height:6px;background:#e5e7eb;border-radius:9999px;overflow:hidden}
+        .progress-bar-fill{height:100%;border-radius:9999px;transition:width .4s}
+        .progress-bar-fill.green{background:#10b981}
+        .progress-bar-fill.orange{background:#f59e0b}
+        .progress-bar-fill.red{background:#ef4444}
+        .progress-pct{font-size:12px;font-weight:600;color:#374151;width:32px;text-align:right}
+        .admin-log-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+        .admin-log-header{padding:18px 24px;border-bottom:1px solid #e2e8f0;font-size:15px;font-weight:600;color:#111827}
+        .admin-log-table{width:100%;border-collapse:collapse}
+        .admin-log-table thead th{font-size:12px;font-weight:600;color:#6b7280;padding:12px 20px;text-align:left;border-bottom:1px solid #f1f5f9;background:#f9fafb}
+        .admin-log-table tbody tr{border-bottom:1px solid #f1f5f9;transition:background .12s}
+        .admin-log-table tbody tr:last-child{border-bottom:none}
+        .admin-log-table tbody tr:hover{background:#f8fafc}
+        .admin-log-table tbody td{padding:13px 20px;font-size:13px;color:#111827}
+        .admin-log-table tbody td.muted{color:#6b7280}
+        .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;align-items:center;justify-content:center}
+        .modal-overlay.open{display:flex}
+        .modal-box{background:#fff;border-radius:14px;padding:28px 28px 24px;min-width:340px;max-width:420px;width:100%;box-shadow:0 20px 40px rgba(0,0,0,.14)}
+        .modal-title{font-size:16px;font-weight:700;color:#111827;margin-bottom:18px}
+        .modal-field{margin-bottom:14px}
+        .modal-field label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px}
+        .modal-field select,.modal-field input{width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;color:#111827;font-family:var(--font-family);outline:none;transition:border .15s}
+        .modal-field select:focus,.modal-field input:focus{border-color:var(--primary-color)}
+        .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+        .modal-btn{padding:9px 20px;border-radius:8px;font-size:14px;font-weight:500;border:none;cursor:pointer;font-family:var(--font-family);transition:background .15s}
+        .modal-btn-cancel{background:#f1f5f9;color:#374151}
+        .modal-btn-cancel:hover{background:#e2e8f0}
+        .modal-btn-save{background:var(--primary-color);color:#fff}
+        .modal-btn-save:hover{background:var(--primary-hover)}
+        @media(max-width:768px){.vac-stat-grid{grid-template-columns:repeat(2,1fr)}.vac-page-header{flex-direction:column;align-items:flex-start}}
+    </style>
 </head>
 <body>
     <main class="main-content">
-        <header class="page-header">
-            <h2 class="page-title">Vaccination Status Monitoring</h2>
-        </header>
 
-        <section class="grid-4">
-            <div class="card" style="border-left: 4px solid var(--text-muted);">
-                <div style="color: var(--text-muted); font-size: 13px; margin-bottom: 8px;">Total Children</div>
-                <div style="font-size: 28px; font-weight: 600; margin-bottom: 8px;" id="vac-total">0</div>
-                <div style="font-size: 13px; color: var(--text-muted);">Registered in system</div>
+        <!-- Page header + legend -->
+        <div class="vac-page-header">
+            <h2 class="vac-page-title">Vaccination Status</h2>
+            <div class="vac-legend">
+                <div class="vac-legend-item"><span class="dot dot-completed"></span> Completed</div>
+                <div class="vac-legend-item"><span class="dot dot-scheduled"></span> Scheduled</div>
+                <div class="vac-legend-item"><span class="dot dot-due"></span> Due</div>
+                <div class="vac-legend-item"><span class="dot dot-overdue"></span> Overdue</div>
+                <div class="vac-legend-item"><span class="dot dot-skipped"></span> Skipped</div>
+                <span style="color:#9ca3af;font-size:12px;margin-left:8px;">Click any dot to edit</span>
             </div>
-            <div class="card" style="border-left: 4px solid var(--success-color); background-color: var(--success-bg); border-color: var(--success-light);">
-                <div style="color: var(--success-color); font-size: 13px; margin-bottom: 8px;">Completed</div>
-                <div style="font-size: 28px; font-weight: 600; color: var(--success-color); margin-bottom: 8px;" id="vac-uptodate">0</div>
-                <div style="font-size: 13px; color: var(--success-color);">All vaccines completed</div>
-            </div>
-            <div class="card" style="border-left: 4px solid var(--primary-color); background-color: var(--primary-light); border-color: #dbeafe;">
-                <div style="color: var(--primary-color); font-size: 13px; margin-bottom: 8px;">Pending</div>
-                <div style="font-size: 28px; font-weight: 600; color: var(--primary-color); margin-bottom: 8px;" id="vac-pending">0</div>
-                <div style="font-size: 13px; color: var(--primary-color);">Upcoming vaccines</div>
-            </div>
-            <div class="card" style="border-left: 4px solid var(--danger-color); background-color: var(--danger-bg); border-color: var(--danger-light);">
-                <div style="color: var(--danger-color); font-size: 13px; margin-bottom: 8px;">Overdue</div>
-                <div style="font-size: 28px; font-weight: 600; color: var(--danger-color); margin-bottom: 8px;" id="vac-overdue">0</div>
-                <div style="font-size: 13px; color: var(--danger-color);">Requires attention</div>
-            </div>
-        </section>
+        </div>
 
-        <div class="card mb-6" style="display: flex; gap: 16px; align-items: center; padding: 16px 24px;">
-            <div class="search-bar" style="flex: 1; border: none; padding: 0; background: transparent;">
+        <!-- Summary stat cards -->
+        <div class="vac-stat-grid">
+            <div class="vac-stat-card">
+                <div class="vac-stat-num green" id="vac-fully-completed">0</div>
+                <div class="vac-stat-label">Fully Completed</div>
+                <div class="vac-stat-sub">all doses done</div>
+            </div>
+            <div class="vac-stat-card">
+                <div class="vac-stat-num orange" id="vac-due-now">0</div>
+                <div class="vac-stat-label">Due Now</div>
+                <div class="vac-stat-sub">ready for admin</div>
+            </div>
+            <div class="vac-stat-card">
+                <div class="vac-stat-num red" id="vac-overdue">0</div>
+                <div class="vac-stat-label">Overdue</div>
+                <div class="vac-stat-sub">require attention</div>
+            </div>
+            <div class="vac-stat-card">
+                <div class="vac-stat-num gray" id="vac-skipped">0</div>
+                <div class="vac-stat-label">Skipped</div>
+                <div class="vac-stat-sub">declined / contraindicated</div>
+            </div>
+        </div>
+
+        <!-- Search + filter -->
+        <div class="vac-toolbar">
+            <div class="vac-search-wrap">
                 <i class="ph ph-magnifying-glass"></i>
-                <input type="text" id="search-input" placeholder="Search by child or parent name..." style="background: transparent;">
+                <input type="text" id="search-input" placeholder="Search by child or parent name...">
             </div>
             <div class="filter-tabs">
                 <button class="filter-tab active" data-filter="all">All</button>
-                <button class="filter-tab" data-filter="Complete">Complete</button>
-                <button class="filter-tab" data-filter="Pending">Pending</button>
-                <button class="filter-tab" data-filter="Overdue">Overdue</button>
+                <button class="filter-tab" data-filter="completed">Completed</button>
+                <button class="filter-tab" data-filter="due">Due</button>
+                <button class="filter-tab" data-filter="overdue">Overdue</button>
+                <button class="filter-tab" data-filter="skipped">Skipped</button>
             </div>
         </div>
 
-        <div id="vaccination-records-container" style="display: flex; flex-direction: column; gap: 24px;">
-            <!-- Data populated by JS -->
-            <div class="card" style="text-align: center;">Loading records...</div>
+        <!-- Vaccine grid table -->
+        <div class="vac-table-wrap">
+            <table class="vac-table" id="vac-table">
+                <thead>
+                    <tr class="name-row" id="vac-thead-name"></tr>
+                    <tr class="age-row" id="vac-thead-age"></tr>
+                </thead>
+                <tbody id="vac-tbody">
+                    <tr><td colspan="20" style="text-align:center;padding:32px;color:#9ca3af;">Loading vaccination data…</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Administration Log -->
+        <div class="admin-log-card">
+            <div class="admin-log-header">Administration Log</div>
+            <div style="overflow-x:auto;">
+                <table class="admin-log-table">
+                    <thead>
+                        <tr>
+                            <th>Child</th>
+                            <th>Vaccine</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Administered By</th>
+                            <th>Batch No.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="admin-log-tbody">
+                        <tr><td colspan="6" style="text-align:center;padding:24px;color:#9ca3af;">Loading log…</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </main>
 
-    <!-- App Scripts -->
+    <!-- Edit Status Modal -->
+    <div class="modal-overlay" id="edit-modal">
+        <div class="modal-box">
+            <div class="modal-title">Update Vaccination Status</div>
+            <div class="modal-field">
+                <label>Child</label>
+                <input type="text" id="modal-child-name" readonly>
+            </div>
+            <div class="modal-field">
+                <label>Vaccine</label>
+                <input type="text" id="modal-vaccine-name" readonly>
+            </div>
+            <div class="modal-field">
+                <label>Status</label>
+                <select id="modal-status">
+                    <option value="completed">Completed</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="due">Due</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="skipped">Skipped</option>
+                </select>
+            </div>
+            <div class="modal-field">
+                <label>Administered Date</label>
+                <input type="date" id="modal-date">
+            </div>
+            <div class="modal-field">
+                <label>Notes</label>
+                <input type="text" id="modal-notes" placeholder="Optional notes…">
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn modal-btn-cancel" id="modal-cancel">Cancel</button>
+                <button class="modal-btn modal-btn-save" id="modal-save">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script src="env.js"></script>
     <script src="supabaseClient.js"></script>
     <script src="app.js"></script>

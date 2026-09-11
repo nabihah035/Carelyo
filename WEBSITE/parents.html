@@ -52,6 +52,46 @@
             box-shadow: var(--shadow-sm);
         }
 
+        /* ── Tabs for Add Parent Modal ────────────────── */
+        .p-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0;
+        }
+
+        .p-tab {
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-family: var(--font-family);
+            transition: var(--transition);
+            margin-bottom: -1px;
+        }
+
+        .p-tab:hover {
+            color: #374151;
+        }
+
+        .p-tab.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .p-tab-panel {
+            display: none;
+        }
+
+        .p-tab-panel.active {
+            display: block;
+        }
+
         .p-table {
             width: 100%;
             border-collapse: collapse;
@@ -415,21 +455,46 @@
                 <button class="p-modal-close" id="close-add-parent"><i class="ph ph-x"></i></button>
             </div>
             <div class="p-modal-body">
-                <div class="p-form-group">
-                    <label class="p-form-label">Full Name *</label>
-                    <input type="text" class="p-form-control" id="np-name" placeholder="Full name">
+                <!-- Tab buttons -->
+                <div class="p-tabs">
+                    <button class="p-tab active" data-tab="new">Create New User</button>
+                    <button class="p-tab" data-tab="existing">Link Existing User</button>
                 </div>
-                <div class="p-form-group">
-                    <label class="p-form-label">Email *</label>
-                    <input type="email" class="p-form-control" id="np-email" placeholder="email@example.com">
+                
+                <!-- New Parent Form -->
+                <div class="p-tab-panel active" id="panel-new">
+                    <div class="p-form-group">
+                        <label class="p-form-label">Full Name *</label>
+                        <input type="text" class="p-form-control" id="np-name" placeholder="Full name">
+                    </div>
+                    <div class="p-form-group">
+                        <label class="p-form-label">Email *</label>
+                        <input type="email" class="p-form-control" id="np-email" placeholder="email@example.com">
+                    </div>
+                    <div class="p-form-group">
+                        <label class="p-form-label">Phone Number</label>
+                        <input type="text" class="p-form-control" id="np-phone" placeholder="012-345 6789">
+                    </div>
+                    <div class="p-form-group">
+                        <label class="p-form-label">Password *</label>
+                        <input type="password" class="p-form-control" id="np-password">
+                    </div>
                 </div>
-                <div class="p-form-group">
-                    <label class="p-form-label">Phone Number</label>
-                    <input type="text" class="p-form-control" id="np-phone" placeholder="012-345 6789">
-                </div>
-                <div class="p-form-group">
-                    <label class="p-form-label">Password *</label>
-                    <input type="password" class="p-form-control" id="np-password">
+                
+                <!-- Existing Parent Form -->
+                <div class="p-tab-panel" id="panel-existing">
+                    <div class="p-form-group">
+                        <label class="p-form-label">Select Existing Parent *</label>
+                        <select class="p-form-control" id="ep-select">
+                            <option value="">— Loading parents... —</option>
+                        </select>
+                    </div>
+                    <div class="p-form-group" style="margin-top:12px;">
+                        <p style="font-size:13px;color:#64748b;margin:0;">
+                            <i class="ph ph-info" style="margin-right:4px;"></i>
+                            This will link the existing parent account to your clinic.
+                        </p>
+                    </div>
                 </div>
             </div>
             <div class="p-modal-footer">
@@ -470,10 +535,14 @@
                         <label class="p-form-label">Blood Type</label>
                         <select class="p-form-control" id="nc-blood">
                             <option value="">— Select —</option>
-                            <option>A+</option><option>A-</option>
-                            <option>B+</option><option>B-</option>
-                            <option>O+</option><option>O-</option>
-                            <option>AB+</option><option>AB-</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
                         </select>
                     </div>
                     <div class="p-form-group">

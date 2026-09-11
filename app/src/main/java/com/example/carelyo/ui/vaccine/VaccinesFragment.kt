@@ -470,11 +470,11 @@ class ChildVaccineGroupAdapter(
             if (isFemale) {
                 binding.ivChildAvatar.setImageResource(R.drawable.ic_avatar_female)
                 binding.flChildAvatarContainer.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#FFF3E0"))
+                    android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#009688"))
             } else {
-                binding.ivChildAvatar.setImageResource(R.drawable.ic_avatar_male)
+                binding.ivChildAvatar.setImageResource(R.drawable.ic_avatar_male1)
                 binding.flChildAvatarContainer.backgroundTintList =
-                    android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#E0F7FA"))
+                    android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#009688"))
             }
 
             val childVaccineAdapter = VaccineScheduleAdapter(onVaccineClick)

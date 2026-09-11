@@ -10,6 +10,7 @@
 let allParents   = [];
 let clinicId     = null;
 let currentParentId = null;   // for the Add Child modal
+let existingParentsData = []; // for the "Link Existing" tab
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -19,6 +20,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     wireModals();
     await loadParents();
+    await loadExistingParentsForDropdown();
 
     // Live search
     document.getElementById('search-input').addEventListener('input', e => {
@@ -95,6 +97,54 @@ async function loadParents() {
     } catch (err) {
         console.error('Error loading parents:', err);
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#ef4444;">Failed to load parents.</td></tr>`;
+    }
+}
+
+// ─── LOAD EXISTING PARENTS FOR DROPDOWN ────────────────────────────────────
+// Fetches parents NOT already linked to this clinic
+async function loadExistingParentsForDropdown() {
+    const select = document.getElementById('ep-select');
+    if (!select) return;
+
+    try {
+        // Get all parents
+        const { data: allParentUsers, error } = await window.supabaseClient
+            .from('USER')
+            .select('userid, full_name, email')
+            .ilike('role', 'parent')
+            .order('full_name', { ascending: true });
+
+        if (error) throw error;
+
+        // Get already-linked parent IDs for this clinic
+        let linkedIds = [];
+        if (clinicId) {
+            const { data: cp } = await window.supabaseClient
+                .from('CLINIC_PATIENT')
+                .select('userid')
+                .eq('clinicid', clinicId)
+                .not('userid', 'is', null);
+            if (cp) linkedIds = cp.map(p => p.userid).filter(Boolean);
+        }
+
+        // Filter out already-linked parents
+        existingParentsData = (allParentUsers || []).filter(
+            p => !linkedIds.includes(p.userid)
+        );
+
+        if (existingParentsData.length === 0) {
+            select.innerHTML = '<option value="">No unlinked parents available</option>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">— Select a parent —</option>' +
+            existingParentsData.map(p =>
+                `<option value="${p.userid}">${p.full_name} (${p.email || 'no email'})</option>`
+            ).join('');
+
+    } catch (err) {
+        console.error('Error loading existing parents:', err);
+        select.innerHTML = '<option value="">Error loading parents</option>';
     }
 }
 
@@ -234,7 +284,7 @@ async function loadChildren(parentUserId) {
     }
 }
 
-// ─── ADD PARENT ────────────────────────────────────────────────────────────
+// ─── ADD PARENT (Create New) ───────────────────────────────────────────────
 async function saveNewParent() {
     const name     = document.getElementById('np-name').value.trim();
     const email    = document.getElementById('np-email').value.trim();
@@ -279,10 +329,62 @@ async function saveNewParent() {
         showToast('Parent added successfully!', 'success');
         closeAddParentModal();
         await loadParents();
+        await loadExistingParentsForDropdown();
 
     } catch (err) {
         console.error('Error adding parent:', err);
         showToast(err.message || 'Failed to add parent. Ensure the email is unique.', 'error');
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Add Parent';
+    }
+}
+
+// ─── LINK EXISTING PARENT ──────────────────────────────────────────────────
+async function linkExistingParent() {
+    const selectedUserId = document.getElementById('ep-select').value;
+
+    if (!selectedUserId) {
+        showToast('Please select a parent to link.', 'error');
+        return;
+    }
+
+    if (!clinicId) {
+        showToast('Clinic ID not found. Please re-login.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('save-add-parent');
+    btn.disabled    = true;
+    btn.textContent = 'Linking…';
+
+    try {
+        // Insert into CLINIC_PATIENT to link the parent to this clinic
+        const { error } = await window.supabaseClient
+            .from('CLINIC_PATIENT')
+            .insert([{
+                clinicid: clinicId,
+                userid:   parseInt(selectedUserId, 10)
+            }]);
+
+        if (error) {
+            // Handle duplicate key error gracefully
+            if (error.code === '23505') {
+                showToast('This parent is already linked to your clinic.', 'error');
+            } else {
+                throw error;
+            }
+            return;
+        }
+
+        showToast('Parent linked successfully!', 'success');
+        closeAddParentModal();
+        await loadParents();
+        await loadExistingParentsForDropdown();
+
+    } catch (err) {
+        console.error('Error linking parent:', err);
+        showToast(err.message || 'Failed to link parent.', 'error');
     } finally {
         btn.disabled    = false;
         btn.textContent = 'Add Parent';
@@ -360,7 +462,17 @@ function wireModals() {
     document.getElementById('btn-add-parent').addEventListener('click',    openAddParentModal);
     document.getElementById('close-add-parent').addEventListener('click',  closeAddParentModal);
     document.getElementById('cancel-add-parent').addEventListener('click', closeAddParentModal);
-    document.getElementById('save-add-parent').addEventListener('click',   saveNewParent);
+    document.getElementById('save-add-parent').addEventListener('click',   handleSaveParent);
+
+    // Tab switching in Add Parent modal
+    document.querySelectorAll('#add-parent-modal .p-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('#add-parent-modal .p-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('#add-parent-modal .p-tab-panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(`panel-${tab.dataset.tab}`).classList.add('active');
+        });
+    });
 
     // Add Child modal
     document.getElementById('btn-add-child').addEventListener('click',    openAddChildModal);
@@ -369,10 +481,32 @@ function wireModals() {
     document.getElementById('save-add-child').addEventListener('click',   saveNewChild);
 }
 
+// ─── HANDLE SAVE PARENT (dispatches based on active tab) ───────────────────
+function handleSaveParent() {
+    const activeTab = document.querySelector('#add-parent-modal .p-tab.active');
+    if (activeTab && activeTab.dataset.tab === 'existing') {
+        linkExistingParent();
+    } else {
+        saveNewParent();
+    }
+}
+
 function openAddParentModal() {
+    // Reset form fields
     ['np-name','np-email','np-phone','np-password'].forEach(id => {
         document.getElementById(id).value = '';
     });
+    document.getElementById('ep-select').value = '';
+    
+    // Reset to "Create New" tab
+    document.querySelectorAll('#add-parent-modal .p-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#add-parent-modal .p-tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('#add-parent-modal .p-tab[data-tab="new"]').classList.add('active');
+    document.getElementById('panel-new').classList.add('active');
+
+    // Reload existing parents dropdown
+    loadExistingParentsForDropdown();
+
     document.getElementById('add-parent-modal').classList.add('open');
 }
 

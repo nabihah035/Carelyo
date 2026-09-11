@@ -350,6 +350,16 @@ class VaccineViewModel(application: Application) : AndroidViewModel(application)
                     requestVaccinationData(it.UserID)
                 }
             }
+            // Refresh vaccination data after auto-seeding completes for a new child
+            "INFORM_CHILD_VACCINE_SEEDING_DONE" -> {
+                allChildVaccines = emptyList() // clear cache so next load fetches fresh rows
+                val sessionManager = SessionManager(getApplication())
+                val user = sessionManager.getUserSession()
+                user?.let {
+                    isLoadingData = false // reset guard so requestVaccinationData proceeds
+                    requestVaccinationData(it.UserID)
+                }
+            }
         }
     }
 
