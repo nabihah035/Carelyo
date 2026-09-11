@@ -75,22 +75,15 @@
             margin-bottom: -1px;
         }
 
-        .p-tab:hover {
-            color: #374151;
-        }
+        .p-tab:hover { color: #374151; }
 
         .p-tab.active {
             color: var(--primary-color);
             border-bottom-color: var(--primary-color);
         }
 
-        .p-tab-panel {
-            display: none;
-        }
-
-        .p-tab-panel.active {
-            display: block;
-        }
+        .p-tab-panel { display: none; }
+        .p-tab-panel.active { display: block; }
 
         .p-table {
             width: 100%;
@@ -136,6 +129,13 @@
             font-weight: 600;
         }
 
+        .row-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            white-space: nowrap;
+        }
+
         .view-children-btn {
             display: inline-flex;
             align-items: center;
@@ -152,6 +152,23 @@
         }
 
         .view-children-btn:hover { text-decoration: underline; }
+
+        .remove-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #ef4444;
+            cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            white-space: nowrap;
+            transition: var(--transition);
+        }
+
+        .remove-btn:hover { text-decoration: underline; color: #dc2626; }
 
         /* ── Children detail view ────────────────────── */
         .detail-view { display: none; }
@@ -223,9 +240,14 @@
             color: #94a3b8;
         }
 
-        .parent-child-count-box {
-            text-align: right;
+        .parent-info-right {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 14px;
         }
+
+        .parent-child-count-box { text-align: right; }
 
         .parent-child-count-num {
             font-size: 32px;
@@ -238,6 +260,27 @@
             font-size: 12px;
             color: #94a3b8;
             margin-top: 2px;
+        }
+
+        .btn-danger-outline {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #ef4444;
+            background: #fff;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--font-family);
+            transition: var(--transition);
+        }
+
+        .btn-danger-outline:hover {
+            background: #fef2f2;
+            border-color: #fca5a5;
         }
 
         /* ── Children section ────────────────────────── */
@@ -338,6 +381,61 @@
             border-top: 1px solid var(--border-color);
         }
 
+        /* ── Danger modal ─────────────────────────────── */
+        .danger-modal-body { text-align: left; }
+        .danger-modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #fef2f2;
+            color: #ef4444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 16px;
+        }
+        .danger-modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+        .danger-modal-text {
+            font-size: 14px;
+            color: #64748b;
+            line-height: 1.55;
+            margin-bottom: 4px;
+        }
+        .danger-modal-text strong { color: #111827; font-weight: 600; }
+        .danger-modal-warning {
+            margin-top: 14px;
+            padding: 10px 12px;
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            font-size: 12.5px;
+            color: #92400e;
+            line-height: 1.5;
+        }
+        .btn-danger {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #fff;
+            background: #ef4444;
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: var(--font-family);
+            transition: var(--transition);
+        }
+        .btn-danger:hover { background: #dc2626; border-color: #dc2626; }
+        .btn-danger:disabled { opacity: 0.6; cursor: not-allowed; }
+
         /* ── Toast ───────────────────────────────────── */
         #p-toast {
             position: fixed;
@@ -352,6 +450,105 @@
             transition: opacity 0.3s;
             pointer-events: none;
             color: #fff;
+        }
+
+        /* ── Child rows in Add Parent modal ───────────── */
+        .np-child-row {
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .np-child-row-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .np-child-row-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .np-child-remove {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 2px;
+            font-size: 16px;
+            line-height: 1;
+            border-radius: 4px;
+            transition: var(--transition);
+        }
+
+        .np-child-remove:hover { background: #fee2e2; }
+
+        .np-child-row .p-form-row { gap: 10px; }
+        .np-child-row .p-form-group { margin-bottom: 8px; }
+        .np-child-row .p-form-control { padding: 7px 10px; font-size: 13px; }
+        .np-child-row .p-form-label { font-size: 12px; }
+
+        /* ── Existing parent children list ─────────────── */
+        .ep-child-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .ep-child-item .ep-child-avatar {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .ep-child-item .ep-child-name {
+            font-weight: 600;
+            color: #111827;
+            flex: 1;
+        }
+
+        .ep-child-item .ep-child-meta {
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .ep-children-empty {
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
+            background: #f8fafc;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+        }
+
+        .ep-children-loading {
+            padding: 12px;
+            text-align: center;
+            font-size: 13px;
+            color: #64748b;
         }
     </style>
 </head>
@@ -393,14 +590,12 @@
 
         <!-- ══════════ DETAIL VIEW ════════════════════════════════════════ -->
         <div class="detail-view" id="detail-view">
-            <!-- Breadcrumb -->
             <div class="breadcrumb">
                 <button class="breadcrumb-link" id="breadcrumb-back">Parents</button>
                 <span class="breadcrumb-sep">›</span>
                 <span class="breadcrumb-current" id="breadcrumb-name">—</span>
             </div>
 
-            <!-- Parent info card -->
             <div class="parent-info-card" id="parent-info-card">
                 <div>
                     <div class="parent-info-name" id="detail-name">—</div>
@@ -410,13 +605,17 @@
                     </div>
                     <div class="parent-info-reg" id="detail-reg">—</div>
                 </div>
-                <div class="parent-child-count-box">
-                    <div class="parent-child-count-num" id="detail-child-count">0</div>
-                    <div class="parent-child-count-label">registered child</div>
+                <div class="parent-info-right">
+                    <div class="parent-child-count-box">
+                        <div class="parent-child-count-num" id="detail-child-count">0</div>
+                        <div class="parent-child-count-label">registered children</div>
+                    </div>
+                    <button class="btn-danger-outline" id="btn-remove-parent-from-clinic">
+                        <i class="ph ph-user-minus"></i> Remove from Clinic
+                    </button>
                 </div>
             </div>
 
-            <!-- Children section -->
             <div class="children-section-header">
                 <span class="children-section-title">Children</span>
                 <button class="btn btn-primary btn-sm" id="btn-add-child">
@@ -449,18 +648,17 @@
 
     <!-- ── Add Parent Modal ─────────────────────────────────────── -->
     <div class="p-modal-overlay" id="add-parent-modal">
-        <div class="p-modal-box">
+        <div class="p-modal-box" style="width: 520px;">
             <div class="p-modal-header">
                 <span class="p-modal-title">Add Parent</span>
                 <button class="p-modal-close" id="close-add-parent"><i class="ph ph-x"></i></button>
             </div>
             <div class="p-modal-body">
-                <!-- Tab buttons -->
                 <div class="p-tabs">
                     <button class="p-tab active" data-tab="new">Create New User</button>
                     <button class="p-tab" data-tab="existing">Link Existing User</button>
                 </div>
-                
+
                 <!-- New Parent Form -->
                 <div class="p-tab-panel active" id="panel-new">
                     <div class="p-form-group">
@@ -479,8 +677,21 @@
                         <label class="p-form-label">Password *</label>
                         <input type="password" class="p-form-control" id="np-password">
                     </div>
+
+                    <div style="border-top: 1px solid var(--border-color); margin-top: 4px; padding-top: 16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                            <label class="p-form-label" style="margin:0; font-size:14px; font-weight:600;">Children *</label>
+                            <button type="button" class="btn btn-outline btn-sm" id="btn-add-child-row" style="padding:4px 10px; font-size:12px;">
+                                <i class="ph ph-plus"></i> Add Child
+                            </button>
+                        </div>
+                        <div id="np-children-container"></div>
+                        <p id="np-child-hint" style="font-size:12px; color:#94a3b8; margin:0;">
+                            Add at least one child to register with this parent.
+                        </p>
+                    </div>
                 </div>
-                
+
                 <!-- Existing Parent Form -->
                 <div class="p-tab-panel" id="panel-existing">
                     <div class="p-form-group">
@@ -489,10 +700,16 @@
                             <option value="">— Loading parents... —</option>
                         </select>
                     </div>
-                    <div class="p-form-group" style="margin-top:12px;">
-                        <p style="font-size:13px;color:#64748b;margin:0;">
+
+                    <div id="ep-children-wrap" style="display:none; border-top: 1px solid var(--border-color); margin-top: 16px; padding-top: 16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <label class="p-form-label" style="margin:0; font-size:14px; font-weight:600;">Children</label>
+                            <span id="ep-children-count" style="font-size:12px; color:#64748b;"></span>
+                        </div>
+                        <div id="ep-children-list"></div>
+                        <p style="font-size:12px; color:#94a3b8; margin:8px 0 0;">
                             <i class="ph ph-info" style="margin-right:4px;"></i>
-                            This will link the existing parent account to your clinic.
+                            All children above will be linked to your clinic along with the parent.
                         </p>
                     </div>
                 </div>
@@ -558,6 +775,40 @@
             <div class="p-modal-footer">
                 <button class="btn btn-outline" id="cancel-add-child">Cancel</button>
                 <button class="btn btn-primary" id="save-add-child">Add Child</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Remove from Clinic Confirmation Modal ─────────────────── -->
+    <div class="p-modal-overlay" id="remove-parent-modal">
+        <div class="p-modal-box" style="width: 460px;">
+            <div class="p-modal-header">
+                <span class="p-modal-title">Remove from Clinic</span>
+                <button class="p-modal-close" id="close-remove-parent"><i class="ph ph-x"></i></button>
+            </div>
+            <div class="p-modal-body">
+                <div class="danger-modal-body">
+                    <div class="danger-modal-icon">
+                        <i class="ph ph-warning"></i>
+                    </div>
+                    <div class="danger-modal-title">Remove this parent from your clinic?</div>
+                    <div class="danger-modal-text">
+                        <strong id="remove-parent-name">—</strong> and their children will no longer be
+                        associated with this clinic. The parent and children accounts themselves will
+                        <strong>not</strong> be deleted.
+                    </div>
+                    <div class="danger-modal-warning">
+                        <i class="ph ph-info"></i>
+                        This only removes the clinic link. You can re-link them later from
+                        <em>Add Parent → Link Existing User</em>.
+                    </div>
+                </div>
+            </div>
+            <div class="p-modal-footer">
+                <button class="btn btn-outline" id="cancel-remove-parent">Cancel</button>
+                <button class="btn btn-danger" id="confirm-remove-parent">
+                    <i class="ph ph-user-minus"></i> Remove from Clinic
+                </button>
             </div>
         </div>
     </div>

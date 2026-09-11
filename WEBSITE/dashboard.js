@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     let userSession = JSON.parse(sessionData);
     let clinicId = userSession.clinicid || (userSession.clinic ? userSession.clinic.clinicid : null);
 
-    // If clinicId is not yet cached in session, resolve it from CLINIC_STAFF
     if (!clinicId && userSession.userid && window.supabaseClient) {
         try {
             const { data: staffData } = await window.supabaseClient
@@ -38,13 +37,11 @@ function getInitials(name) {
 }
 
 function setupHeader(userSession) {
-    // Format current date: e.g. "Monday, 7 September 2026"
     const dateOptions = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
     const todayFormatted = new Date().toLocaleDateString('en-GB', dateOptions);
     const dateEl = document.getElementById('overview-date');
     if (dateEl) dateEl.innerText = todayFormatted;
 
-    // Staff Name and Avatar Badge
     const staffName = userSession.full_name || 'Staff User';
     const nameEl = document.getElementById('header-user-name');
     const avatarEl = document.getElementById('header-user-avatar');
@@ -66,7 +63,7 @@ async function loadDashboardData(clinicId, userSession) {
         const { count: apptTodayCount } = await apptCountQuery;
         document.getElementById('stat-appointments-today').innerText = (apptTodayCount || 0).toLocaleString();
 
-        // 2. Stat: Registered Children at this clinic (via CLINIC_PATIENT)
+        // 2. Stat: Registered Children at this clinic
         let childrenCount = 0;
         let clinicChildIds = [];
         let clinicUserIds = [];
@@ -87,7 +84,6 @@ async function loadDashboardData(clinicId, userSession) {
                 console.warn("Could not fetch from CLINIC_PATIENT:", e);
             }
 
-            // Fallback: If CLINIC_PATIENT has no rows yet, check APPOINTMENT for this clinic
             if (childrenCount === 0) {
                 const { data: clinicAppts } = await window.supabaseClient
                     .from('APPOINTMENT')
@@ -103,7 +99,6 @@ async function loadDashboardData(clinicId, userSession) {
         }
 
         if (childrenCount === 0 && !clinicId) {
-            // Fallback to overall registered children count
             const { count: totalChildren } = await window.supabaseClient
                 .from('CHILD')
                 .select('childid', { count: 'exact', head: true });
@@ -111,7 +106,7 @@ async function loadDashboardData(clinicId, userSession) {
         }
         document.getElementById('stat-registered-children').innerText = childrenCount.toLocaleString();
 
-        // 3. Stat: Overdue Vaccinations (filtered by this clinic's children)
+        // 3. Stat: Overdue Vaccinations — status must be 'Overdue' (capital O)
         let overdueQuery = window.supabaseClient
             .from('CHILD_VACCINE')
             .select('childvaccineid', { count: 'exact', head: true })
@@ -124,7 +119,7 @@ async function loadDashboardData(clinicId, userSession) {
         const totalOverdue = overdueCount || 0;
         document.getElementById('stat-overdue-vaccines').innerText = totalOverdue.toLocaleString();
 
-        // 4. Attention Required — check Appointments, Vaccinations, Notifications
+        // 4. Attention Required
         await loadAttentionBanner(clinicId, clinicChildIds, totalOverdue);
 
         // 5. Today's Schedule List
@@ -136,55 +131,25 @@ async function loadDashboardData(clinicId, userSession) {
 }
 
 // ─── Attention Required Banner ──────────────────────────────────────────────
-// Queries three problem areas against the live schema:
-//   • APPOINTMENT  — status = 'pending'  (unconfirmed appointments)
-//   • CHILD_VACCINE — status ilike 'overdue' (already computed, passed in)
-//   • NOTIFICATION  — is_read = false  (unread notifications for this clinic)
-// Each area that has issues renders a clickable red bullet linking to its page.
-// If all three are clear, shows a single green "All clear" message.
+// Shows issues across Vaccinations & Notifications only.
+// (Appointments-pending-confirmation message has been removed per requirements.)
 async function loadAttentionBanner(clinicId, clinicChildIds, overdueVaccines) {
     const list = document.getElementById('attention-issues-list');
     if (!list) return;
 
-    const issues = [];   // { message, href, icon }
-    const clears = [];   // strings for areas that are fine
+    const issues = [];
 
     try {
-        // ── 1. Pending / unconfirmed appointments ─────────────────────────
-        // APPOINTMENT.status = 'pending' means not yet confirmed by staff
-        let pendingApptQuery = window.supabaseClient
-            .from('APPOINTMENT')
-            .select('appid', { count: 'exact', head: true })
-            .ilike('status', 'pending');
-        if (clinicId) pendingApptQuery = pendingApptQuery.eq('clinicid', clinicId);
-
-        const { count: pendingCount } = await pendingApptQuery;
-        const totalPending = pendingCount || 0;
-
-        if (totalPending > 0) {
-            issues.push({
-                icon: 'ph-calendar-x',
-                message: `${totalPending} appointment${totalPending > 1 ? 's' : ''} pending confirmation`,
-                href: 'appointments.html'
-            });
-        } else {
-            clears.push('appointments');
-        }
-
-        // ── 2. Overdue vaccinations ───────────────────────────────────────
-        // CHILD_VACCINE.status = 'overdue' — count already computed by loadDashboardData
+        // ── 1. Overdue vaccinations ───────────────────────────────────────
         if (overdueVaccines > 0) {
             issues.push({
                 icon: 'ph-syringe',
                 message: `${overdueVaccines} overdue vaccination dose${overdueVaccines > 1 ? 's' : ''} — children need follow-up`,
                 href: 'vaccinations.html'
             });
-        } else {
-            clears.push('vaccinations');
         }
 
-        // ── 3. Unread notifications ───────────────────────────────────────
-        // NOTIFICATION.is_read = false — unread rows for this clinic
+        // ── 2. Unread notifications ───────────────────────────────────────
         let unreadNotifQuery = window.supabaseClient
             .from('NOTIFICATION')
             .select('notificationid', { count: 'exact', head: true })
@@ -200,23 +165,19 @@ async function loadAttentionBanner(clinicId, clinicChildIds, overdueVaccines) {
                 message: `${totalUnread} unread notification${totalUnread > 1 ? 's' : ''} awaiting review`,
                 href: 'notifications.html'
             });
-        } else {
-            clears.push('notifications');
         }
 
     } catch (err) {
         console.warn('Could not fully load attention banner:', err);
     }
 
-    // ── Render ─────────────────────────────────────────────────────────────
     list.innerHTML = '';
 
     if (issues.length === 0) {
-        // All three areas are clear — show single green message
         list.innerHTML = `
             <div class="attention-issue-row all-clear">
                 <i class="ph ph-check-circle attention-issue-icon"></i>
-                <span>All clear — no issues in appointments, vaccinations, or notifications</span>
+                <span>All clear — no issues in vaccinations or notifications</span>
             </div>`;
     } else {
         issues.forEach(({ icon, message, href }) => {
@@ -233,7 +194,6 @@ async function loadAttentionBanner(clinicId, clinicChildIds, overdueVaccines) {
 }
 
 async function loadTodaySchedule(clinicId, today) {
-
     const listContainer = document.getElementById('today-schedule-list');
     if (!listContainer) return;
 
@@ -257,7 +217,6 @@ async function loadTodaySchedule(clinicId, today) {
 
         let { data: appointments, error } = await scheduleQuery;
 
-        // If no appointments for today, show most recent ones so schedule isn't empty
         if (!appointments || appointments.length === 0) {
             let fallbackQuery = window.supabaseClient
                 .from('APPOINTMENT')
@@ -291,24 +250,20 @@ async function loadTodaySchedule(clinicId, today) {
 
         listContainer.innerHTML = '';
         appointments.forEach(appt => {
-            // Child name is the primary label (CHILD.full_name via FK APPOINTMENT.childid)
             const childName = appt.CHILD ? appt.CHILD.full_name : 'Unknown Child';
-
-            // Time from APPOINTMENT.appointment_time (time without time zone) e.g. "08:30:00"
             const timeStr = appt.appointment_time ? appt.appointment_time.slice(0, 5) : '—';
-
-            // Meta line: purpose only (schema: APPOINTMENT.purpose text)
             const metaStr = appt.purpose || 'General Appointment';
 
-            // Status pill mapping — covers all realistic APPOINTMENT.status values
-            const rawStatus = (appt.status || 'Scheduled').trim();
+            // Status values from DB: Scheduled | Completed | Cancelled | No-Show
+            const rawStatus   = (appt.status || 'Scheduled').trim();
             const lowerStatus = rawStatus.toLowerCase();
             let pillClass = 'status-scheduled';
-            if      (lowerStatus === 'completed')                          pillClass = 'status-completed';
-            else if (lowerStatus === 'confirmed')                          pillClass = 'status-confirmed';
+            if      (lowerStatus === 'completed')   pillClass = 'status-completed';
+            else if (lowerStatus === 'cancelled')   pillClass = 'status-cancelled';
+            else if (lowerStatus === 'no-show')     pillClass = 'status-cancelled'; // reuse red pill
+            else if (lowerStatus === 'scheduled')   pillClass = 'status-scheduled';
+            else if (lowerStatus === 'confirmed')   pillClass = 'status-confirmed';
             else if (lowerStatus === 'in progress' || lowerStatus === 'inprogress') pillClass = 'status-inprogress';
-            else if (lowerStatus === 'cancelled'  || lowerStatus === 'canceled')    pillClass = 'status-cancelled';
-            else if (lowerStatus === 'upcoming'   || lowerStatus === 'scheduled')   pillClass = 'status-scheduled';
 
             const rowHtml = `
                 <div class="schedule-row" onclick="window.location.href='appointments.html'" style="cursor:pointer;">

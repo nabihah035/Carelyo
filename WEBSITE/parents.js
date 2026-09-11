@@ -7,10 +7,12 @@
      CLINIC_PATIENT (clinic_patient_id, clinicid, userid, childid)
    ============================================================ */
 
-let allParents   = [];
-let clinicId     = null;
-let currentParentId = null;   // for the Add Child modal
-let existingParentsData = []; // for the "Link Existing" tab
+let allParents          = [];
+let clinicId            = null;
+let currentParentId     = null;   // for the Add Child modal (from detail view)
+let existingParentsData = [];     // for the "Link Existing" tab
+let childRowCounter     = 0;      // unique ID counter for child rows
+let pendingRemoveUser   = null;   // { userid, full_name } for the confirm modal
 
 // ─── Init ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -23,14 +25,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadExistingParentsForDropdown();
 
     // Live search
-    document.getElementById('search-input').addEventListener('input', e => {
-        const q = e.target.value.toLowerCase();
-        const filtered = allParents.filter(p =>
-            (p.full_name || '').toLowerCase().includes(q) ||
-            (p.email     || '').toLowerCase().includes(q)
-        );
-        renderParentsList(filtered);
-    });
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', e => {
+            const q = e.target.value.toLowerCase();
+            const filtered = allParents.filter(p =>
+                (p.full_name || '').toLowerCase().includes(q) ||
+                (p.email     || '').toLowerCase().includes(q)
+            );
+            renderParentsList(filtered);
+        });
+    }
 });
 
 // ─── VIEW SWITCHING ────────────────────────────────────────────────────────
@@ -45,13 +50,12 @@ function showDetailView() {
 }
 
 // ─── LOAD PARENTS LIST ─────────────────────────────────────────────────────
-// Queries USER where role='parent', joins CHILD count, filters by clinic
 async function loadParents() {
     const tbody = document.getElementById('parents-tbody');
+    if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#64748b;">Loading parents…</td></tr>`;
 
     try {
-        // Build query — select USER rows with CHILD child rows for count
         let query = window.supabaseClient
             .from('USER')
             .select(`
@@ -65,7 +69,6 @@ async function loadParents() {
             .ilike('role', 'parent')
             .order('created_at', { ascending: true });
 
-        // Narrow to clinic patients if clinicId is set
         if (clinicId) {
             const { data: cp } = await window.supabaseClient
                 .from('CLINIC_PATIENT')
@@ -75,7 +78,7 @@ async function loadParents() {
 
             let ids = cp ? [...new Set(cp.map(p => p.userid).filter(Boolean))] : [];
 
-            // Fallback: infer from APPOINTMENT.parentid for this clinic
+            // Fallback: infer from APPOINTMENT if CLINIC_PATIENT is empty
             if (ids.length === 0) {
                 const { data: appts } = await window.supabaseClient
                     .from('APPOINTMENT')
@@ -85,7 +88,14 @@ async function loadParents() {
                 if (appts) ids = [...new Set(appts.map(a => a.parentid).filter(Boolean))];
             }
 
-            if (ids.length > 0) query = query.in('userid', ids);
+            if (ids.length > 0) {
+                query = query.in('userid', ids);
+            } else {
+                // No parents linked to this clinic — return empty
+                allParents = [];
+                renderParentsList(allParents);
+                return;
+            }
         }
 
         const { data, error } = await query;
@@ -101,13 +111,14 @@ async function loadParents() {
 }
 
 // ─── LOAD EXISTING PARENTS FOR DROPDOWN ────────────────────────────────────
-// Fetches parents NOT already linked to this clinic
 async function loadExistingParentsForDropdown() {
     const select = document.getElementById('ep-select');
     if (!select) return;
 
+    const wrap = document.getElementById('ep-children-wrap');
+    if (wrap) wrap.style.display = 'none';
+
     try {
-        // Get all parents
         const { data: allParentUsers, error } = await window.supabaseClient
             .from('USER')
             .select('userid, full_name, email')
@@ -116,31 +127,56 @@ async function loadExistingParentsForDropdown() {
 
         if (error) throw error;
 
-        // Get already-linked parent IDs for this clinic
-        let linkedIds = [];
+        let linkedUserIds = [];
         if (clinicId) {
             const { data: cp } = await window.supabaseClient
                 .from('CLINIC_PATIENT')
                 .select('userid')
                 .eq('clinicid', clinicId)
                 .not('userid', 'is', null);
-            if (cp) linkedIds = cp.map(p => p.userid).filter(Boolean);
+            if (cp) linkedUserIds = [...new Set(cp.map(p => p.userid).filter(Boolean))];
         }
 
-        // Filter out already-linked parents
-        existingParentsData = (allParentUsers || []).filter(
-            p => !linkedIds.includes(p.userid)
+        const unlinkedParents = (allParentUsers || []).filter(
+            p => !linkedUserIds.includes(p.userid)
         );
 
-        if (existingParentsData.length === 0) {
+        if (unlinkedParents.length === 0) {
             select.innerHTML = '<option value="">No unlinked parents available</option>';
+            existingParentsData = [];
             return;
         }
 
+        const parentIds = unlinkedParents.map(p => p.userid);
+        let childRows = [];
+        if (parentIds.length > 0) {
+            const { data, error: cErr } = await window.supabaseClient
+                .from('CHILD')
+                .select('childid, parent_id, full_name, date_of_birth, gender')
+                .in('parent_id', parentIds);
+            if (cErr) throw cErr;
+            childRows = data || [];
+        }
+
+        const childrenByParent = {};
+        childRows.forEach(c => {
+            if (!childrenByParent[c.parent_id]) childrenByParent[c.parent_id] = [];
+            childrenByParent[c.parent_id].push(c);
+        });
+
+        existingParentsData = unlinkedParents.map(p => ({
+            ...p,
+            CHILD: childrenByParent[p.userid] || []
+        }));
+
         select.innerHTML = '<option value="">— Select a parent —</option>' +
-            existingParentsData.map(p =>
-                `<option value="${p.userid}">${p.full_name} (${p.email || 'no email'})</option>`
-            ).join('');
+            existingParentsData.map(p => {
+                const childCount = p.CHILD.length;
+                const label = childCount > 0
+                    ? `${p.full_name} (${childCount} child${childCount > 1 ? 'ren' : ''})`
+                    : `${p.full_name} (no children)`;
+                return `<option value="${p.userid}">${label}</option>`;
+            }).join('');
 
     } catch (err) {
         console.error('Error loading existing parents:', err);
@@ -148,9 +184,51 @@ async function loadExistingParentsForDropdown() {
     }
 }
 
+// ─── RENDER EXISTING PARENT'S CHILDREN ─────────────────────────────────────
+function renderExistingChildren(parentId) {
+    const wrap    = document.getElementById('ep-children-wrap');
+    const list    = document.getElementById('ep-children-list');
+    const countEl = document.getElementById('ep-children-count');
+    if (!wrap || !list) return;
+
+    const parent = existingParentsData.find(p => p.userid == parentId);
+    if (!parent) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    const children = parent.CHILD || [];
+
+    wrap.style.display = 'block';
+    if (countEl) {
+        countEl.textContent = children.length === 0
+            ? 'no children'
+            : `${children.length} child${children.length !== 1 ? 'ren' : ''}`;
+    }
+
+    if (children.length === 0) {
+        list.innerHTML = `<div class="ep-children-empty">This parent has no children on record.</div>`;
+        return;
+    }
+
+    list.innerHTML = children.map(c => {
+        const initials = getInitials(c.full_name);
+        const age      = c.date_of_birth ? calcAge(c.date_of_birth) : '—';
+        const meta     = [age, c.gender].filter(Boolean).join(' • ');
+        return `
+            <div class="ep-child-item">
+                <div class="ep-child-avatar">${initials}</div>
+                <div class="ep-child-name">${c.full_name || '—'}</div>
+                <div class="ep-child-meta">${meta}</div>
+            </div>
+        `;
+    }).join('');
+}
+
 // ─── RENDER PARENTS TABLE ──────────────────────────────────────────────────
 function renderParentsList(parents) {
     const tbody = document.getElementById('parents-tbody');
+    if (!tbody) return;
 
     if (parents.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:#64748b;">No parents found.</td></tr>`;
@@ -159,7 +237,6 @@ function renderParentsList(parents) {
 
     tbody.innerHTML = '';
     parents.forEach((parent, idx) => {
-        // CHILD is an array of child rows joined via parent_id FK
         const childCount = parent.CHILD ? parent.CHILD.length : 0;
         const phone      = parent.phone_number || '—';
         const email      = parent.email || '—';
@@ -174,15 +251,22 @@ function renderParentsList(parents) {
             <td class="p-date-col">${regDate}</td>
             <td><span class="child-count-badge">${childCount}</span></td>
             <td>
-                <button class="view-children-btn" data-id="${parent.userid}">
-                    View Children →
-                </button>
+                <div class="row-actions">
+                    <button class="view-children-btn" data-action="view">
+                        View Children →
+                    </button>
+                    <button class="remove-btn" data-action="remove" title="Remove from this clinic">
+                        <i class="ph ph-user-minus"></i> Remove
+                    </button>
+                </div>
             </td>
         `;
 
-        // Click "View Children →" to open detail view
-        tr.querySelector('.view-children-btn').addEventListener('click', () => {
+        tr.querySelector('[data-action="view"]').addEventListener('click', () => {
             openDetailView(parent);
+        });
+        tr.querySelector('[data-action="remove"]').addEventListener('click', () => {
+            openRemoveModal(parent.userid, parent.full_name);
         });
 
         tbody.appendChild(tr);
@@ -190,28 +274,28 @@ function renderParentsList(parents) {
 }
 
 // ─── OPEN DETAIL VIEW ─────────────────────────────────────────────────────
-// Shows the parent info card + their children table
 async function openDetailView(parent) {
     currentParentId = parent.userid;
 
-    // Fill parent info card
-    document.getElementById('breadcrumb-name').textContent  = parent.full_name || '—';
-    document.getElementById('detail-name').textContent      = parent.full_name || '—';
-    document.getElementById('detail-phone').textContent     = parent.phone_number || '—';
-    document.getElementById('detail-email').textContent     = parent.email || '—';
-    document.getElementById('detail-reg').textContent       =
+    document.getElementById('breadcrumb-name').textContent = parent.full_name || '—';
+    document.getElementById('detail-name').textContent     = parent.full_name || '—';
+    document.getElementById('detail-phone').textContent    = parent.phone_number || '—';
+    document.getElementById('detail-email').textContent    = parent.email || '—';
+    document.getElementById('detail-reg').textContent      =
         parent.created_at ? `Registered ${formatLongDate(parent.created_at)}` : '';
 
-    showDetailView();
+    // Wire the "Remove from Clinic" button for this specific parent
+    const removeBtn = document.getElementById('btn-remove-parent-from-clinic');
+    removeBtn.onclick = () => openRemoveModal(parent.userid, parent.full_name);
 
-    // Load children
+    showDetailView();
     await loadChildren(parent.userid);
 }
 
 // ─── LOAD CHILDREN FOR A PARENT ────────────────────────────────────────────
-// Queries CHILD where parent_id = userid (FK: CHILD.parent_id → USER.userid)
 async function loadChildren(parentUserId) {
     const tbody = document.getElementById('children-tbody');
+    if (!tbody) return;
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;color:#64748b;">Loading children…</td></tr>`;
 
     try {
@@ -235,7 +319,6 @@ async function loadChildren(parentUserId) {
 
         const children = data || [];
 
-        // Update child count on info card
         document.getElementById('detail-child-count').textContent = children.length;
         const countLabel = document.querySelector('.parent-child-count-label');
         if (countLabel) countLabel.textContent = children.length === 1 ? 'registered child' : 'registered children';
@@ -271,7 +354,6 @@ async function loadChildren(parentUserId) {
                     </button>
                 </td>
             `;
-            // "View Records" — navigates to health.html with childid in URL
             tr.querySelector('button').addEventListener('click', () => {
                 window.location.href = `health.html?childid=${child.childid}`;
             });
@@ -284,7 +366,81 @@ async function loadChildren(parentUserId) {
     }
 }
 
-// ─── ADD PARENT (Create New) ───────────────────────────────────────────────
+// ─── CHILD ROW BUILDERS (for Add Parent modal) ─────────────────────────────
+function buildChildRow() {
+    const rowId = `np-child-${++childRowCounter}`;
+    const div = document.createElement('div');
+    div.className = 'np-child-row';
+    div.id = rowId;
+    div.innerHTML = `
+        <div class="np-child-row-header">
+            <span class="np-child-row-title">Child</span>
+            <button type="button" class="np-child-remove" title="Remove child">
+                <i class="ph ph-trash"></i>
+            </button>
+        </div>
+        <div class="p-form-group" style="margin-bottom:8px;">
+            <label class="p-form-label">Full Name *</label>
+            <input type="text" class="p-form-control np-child-name" placeholder="Child's full name">
+        </div>
+        <div class="p-form-row">
+            <div class="p-form-group">
+                <label class="p-form-label">Date of Birth *</label>
+                <input type="date" class="p-form-control np-child-dob">
+            </div>
+            <div class="p-form-group">
+                <label class="p-form-label">Gender</label>
+                <select class="p-form-control np-child-gender">
+                    <option value="">—</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+        </div>
+        <div class="p-form-row">
+            <div class="p-form-group">
+                <label class="p-form-label">Blood Type</label>
+                <select class="p-form-control np-child-blood">
+                    <option value="">—</option>
+                    <option value="A+">A+</option><option value="A-">A-</option>
+                    <option value="B+">B+</option><option value="B-">B-</option>
+                    <option value="O+">O+</option><option value="O-">O-</option>
+                    <option value="AB+">AB+</option><option value="AB-">AB-</option>
+                </select>
+            </div>
+            <div class="p-form-group">
+                <label class="p-form-label">Weight (kg)</label>
+                <input type="text" class="p-form-control np-child-weight" placeholder="e.g. 12.5">
+            </div>
+        </div>
+        <div class="p-form-group" style="margin-bottom:0;">
+            <label class="p-form-label">Height (cm)</label>
+            <input type="text" class="p-form-control np-child-height" placeholder="e.g. 85">
+        </div>
+    `;
+    div.querySelector('.np-child-remove').addEventListener('click', () => {
+        div.remove();
+        updateChildHint();
+    });
+    return div;
+}
+
+function addChildRow() {
+    const container = document.getElementById('np-children-container');
+    if (!container) return;
+    container.appendChild(buildChildRow());
+    updateChildHint();
+}
+
+function updateChildHint() {
+    const container = document.getElementById('np-children-container');
+    const hint = document.getElementById('np-child-hint');
+    if (!container || !hint) return;
+    const count = container.querySelectorAll('.np-child-row').length;
+    hint.style.display = count === 0 ? 'block' : 'none';
+}
+
+// ─── ADD PARENT (Create New + Children) ────────────────────────────────────
 async function saveNewParent() {
     const name     = document.getElementById('np-name').value.trim();
     const email    = document.getElementById('np-email').value.trim();
@@ -296,37 +452,106 @@ async function saveNewParent() {
         return;
     }
 
+    const childRows = [...document.querySelectorAll('#np-children-container .np-child-row')];
+    const children = [];
+    for (const row of childRows) {
+        const cName = row.querySelector('.np-child-name').value.trim();
+        const cDob  = row.querySelector('.np-child-dob').value;
+        if (!cName || !cDob) {
+            showToast('Each child needs a Full Name and Date of Birth.', 'error');
+            return;
+        }
+        children.push({
+            full_name:     cName,
+            date_of_birth: cDob,
+            gender:        row.querySelector('.np-child-gender').value || null,
+            blood_type:    row.querySelector('.np-child-blood').value  || null,
+            weight:        row.querySelector('.np-child-weight').value.trim() || null,
+            height:        row.querySelector('.np-child-height').value.trim() || null,
+        });
+    }
+
+    if (children.length === 0) {
+        showToast('Please add at least one child.', 'error');
+        return;
+    }
+
     const btn = document.getElementById('save-add-parent');
     btn.disabled    = true;
     btn.textContent = 'Adding…';
 
-    try {
-        const payload = {
-            full_name:    name,
-            email:        email,
-            phone_number: phone || null,
-            password:     password,
-            role:         'parent'
-        };
+    let newUserId = null;
+    const createdChildIds = [];
 
-        const { data: newRows, error } = await window.supabaseClient
+    try {
+        const { data: newUsers, error: userErr } = await window.supabaseClient
             .from('USER')
-            .insert([payload])
+            .insert([{
+                full_name:    name,
+                email:        email,
+                phone_number: phone || null,
+                password:     password,
+                role:         'parent'
+            }])
             .select('userid');
 
-        if (error) throw error;
+        if (userErr) throw userErr;
+        newUserId = newUsers[0].userid;
 
-        // Register in CLINIC_PATIENT so they appear in this clinic's list
-        if (clinicId && newRows && newRows.length > 0) {
-            await window.supabaseClient.from('CLINIC_PATIENT').insert([{
-                clinicid: clinicId,
-                userid:   newRows[0].userid
-            }]).then(({ error: cpErr }) => {
-                if (cpErr) console.warn('CLINIC_PATIENT insert failed:', cpErr);
-            });
+        const childPayloads = children.map(c => ({
+            parent_id:     newUserId,
+            full_name:     c.full_name,
+            date_of_birth: c.date_of_birth,
+            gender:        c.gender,
+            blood_type:    c.blood_type,
+            weight:        c.weight,
+            height:        c.height,
+            status:        'Active'
+        }));
+
+        const { data: newChildren, error: childErr } = await window.supabaseClient
+            .from('CHILD')
+            .insert(childPayloads)
+            .select('childid');
+
+        if (childErr) {
+            console.warn('Child insert failed, rolling back parent:', childErr);
+            await window.supabaseClient.from('USER').delete().eq('userid', newUserId);
+            throw new Error('Failed to add children. Parent was not created.');
         }
 
-        showToast('Parent added successfully!', 'success');
+        (newChildren || []).forEach(c => createdChildIds.push(c.childid));
+
+        if (clinicId) {
+            const cpRows = [
+                { clinicid: clinicId, userid: newUserId, childid: null },
+                ...createdChildIds.map(cid => ({
+                    clinicid: clinicId,
+                    userid:   newUserId,
+                    childid:  cid
+                }))
+            ];
+
+            const { error: cpErr } = await window.supabaseClient
+                .from('CLINIC_PATIENT')
+                .insert(cpRows);
+
+            if (cpErr) {
+                console.warn('CLINIC_PATIENT insert failed:', cpErr);
+                showToast('Parent and children created, but clinic linking failed. Please link manually.', 'error');
+            } else {
+                showToast(
+                    `Parent and ${children.length} child${children.length > 1 ? 'ren' : ''} added successfully!`,
+                    'success'
+                );
+            }
+        } else {
+            showToast(
+                `Parent and ${children.length} child${children.length > 1 ? 'ren' : ''} added successfully!`,
+                'success'
+            );
+        }
+
         closeAddParentModal();
         await loadParents();
         await loadExistingParentsForDropdown();
@@ -340,7 +565,7 @@ async function saveNewParent() {
     }
 }
 
-// ─── LINK EXISTING PARENT ──────────────────────────────────────────────────
+// ─── LINK EXISTING PARENT + THEIR CHILDREN ─────────────────────────────────
 async function linkExistingParent() {
     const selectedUserId = document.getElementById('ep-select').value;
 
@@ -359,25 +584,69 @@ async function linkExistingParent() {
     btn.textContent = 'Linking…';
 
     try {
-        // Insert into CLINIC_PATIENT to link the parent to this clinic
-        const { error } = await window.supabaseClient
-            .from('CLINIC_PATIENT')
-            .insert([{
-                clinicid: clinicId,
-                userid:   parseInt(selectedUserId, 10)
-            }]);
+        const uid = parseInt(selectedUserId, 10);
 
-        if (error) {
-            // Handle duplicate key error gracefully
-            if (error.code === '23505') {
-                showToast('This parent is already linked to your clinic.', 'error');
-            } else {
-                throw error;
-            }
+        const { data: parentCheck, error: pErr } = await window.supabaseClient
+            .from('USER')
+            .select('userid, role')
+            .eq('userid', uid)
+            .maybeSingle();
+
+        if (pErr) throw pErr;
+        if (!parentCheck) {
+            showToast('Parent not found in database.', 'error');
             return;
         }
 
-        showToast('Parent linked successfully!', 'success');
+        const { data: realChildren, error: cErr } = await window.supabaseClient
+            .from('CHILD')
+            .select('childid, full_name')
+            .eq('parent_id', uid);
+
+        if (cErr) throw cErr;
+        const childIds = (realChildren || []).map(c => c.childid);
+
+        const { data: existing } = await window.supabaseClient
+            .from('CLINIC_PATIENT')
+            .select('userid, childid')
+            .eq('clinicid', clinicId)
+            .eq('userid', uid);
+
+        const linkedChildIds = new Set(
+            (existing || []).map(r => r.childid).filter(Boolean)
+        );
+        const parentAlreadyLinked = (existing || []).some(r => r.childid === null);
+
+        const rowsToInsert = [];
+
+        if (!parentAlreadyLinked) {
+            rowsToInsert.push({ clinicid: clinicId, userid: uid, childid: null });
+        }
+
+        childIds.forEach(cid => {
+            if (!linkedChildIds.has(cid)) {
+                rowsToInsert.push({ clinicid: clinicId, userid: uid, childid: cid });
+            }
+        });
+
+        if (rowsToInsert.length === 0) {
+            showToast('This parent and all their existing children are already linked.', 'error');
+            return;
+        }
+
+        const { error: insErr } = await window.supabaseClient
+            .from('CLINIC_PATIENT')
+            .insert(rowsToInsert);
+
+        if (insErr) throw insErr;
+
+        const newChildCount = rowsToInsert.filter(r => r.childid !== null).length;
+        const parentMsg = parentAlreadyLinked ? '' : 'Parent';
+        const childMsg = newChildCount > 0
+            ? `${parentMsg ? ' and ' : ''}${newChildCount} child${newChildCount > 1 ? 'ren' : ''}`
+            : '';
+        showToast(`${parentMsg}${childMsg} linked successfully!`, 'success');
+
         closeAddParentModal();
         await loadParents();
         await loadExistingParentsForDropdown();
@@ -391,8 +660,71 @@ async function linkExistingParent() {
     }
 }
 
-// ─── ADD CHILD ─────────────────────────────────────────────────────────────
-// Inserts into CHILD with parent_id = currentParentId
+// ─── REMOVE PARENT FROM CLINIC ─────────────────────────────────────────────
+// Only deletes CLINIC_PATIENT rows for this clinic + this parent (and their
+// children). Does NOT touch USER or CHILD rows.
+function openRemoveModal(userid, fullName) {
+    pendingRemoveUser = { userid, full_name: fullName || 'this parent' };
+    document.getElementById('remove-parent-name').textContent = pendingRemoveUser.full_name;
+    document.getElementById('remove-parent-modal').classList.add('open');
+}
+
+function closeRemoveModal() {
+    document.getElementById('remove-parent-modal').classList.remove('open');
+    pendingRemoveUser = null;
+}
+
+async function confirmRemoveParent() {
+    if (!pendingRemoveUser) return;
+
+    if (!clinicId) {
+        showToast('Clinic ID not found. Please re-login.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('confirm-remove-parent');
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="ph ph-circle-notch"></i> Removing…';
+
+    try {
+        const uid = pendingRemoveUser.userid;
+
+        // Delete all CLINIC_PATIENT rows for this clinic + this user
+        // (covers both the parent row and any child rows pointing to them)
+        const { error } = await window.supabaseClient
+            .from('CLINIC_PATIENT')
+            .delete()
+            .eq('clinicid', clinicId)
+            .eq('userid', uid);
+
+        if (error) throw error;
+
+        const removedName = pendingRemoveUser.full_name;
+        closeRemoveModal();
+
+        // If we were viewing this parent's detail, go back to the list
+        if (currentParentId === uid) {
+            currentParentId = null;
+            showListView();
+        }
+
+        showToast(`${removedName} removed from this clinic.`, 'success');
+
+        // Refresh both the list and the dropdown so they can be re-linked
+        await loadParents();
+        await loadExistingParentsForDropdown();
+
+    } catch (err) {
+        console.error('Error removing parent from clinic:', err);
+        showToast(err.message || 'Failed to remove parent from clinic.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+    }
+}
+
+// ─── ADD CHILD (from detail view) ──────────────────────────────────────────
 async function saveNewChild() {
     const name   = document.getElementById('nc-name').value.trim();
     const dob    = document.getElementById('nc-dob').value;
@@ -429,18 +761,25 @@ async function saveNewChild() {
 
         if (error) throw error;
 
-        // Also register child in CLINIC_PATIENT
         if (clinicId && newChild && newChild.length > 0) {
-            await window.supabaseClient.from('CLINIC_PATIENT').insert([{
-                clinicid: clinicId,
-                userid:   currentParentId,
-                childid:  newChild[0].childid
-            }]).then(({ error: cpErr }) => {
-                if (cpErr) console.warn('CLINIC_PATIENT child insert failed:', cpErr);
-            });
+            const { error: cpErr } = await window.supabaseClient
+                .from('CLINIC_PATIENT')
+                .insert([{
+                    clinicid: clinicId,
+                    userid:   currentParentId,
+                    childid:  newChild[0].childid
+                }]);
+
+            if (cpErr) {
+                console.warn('CLINIC_PATIENT child insert failed:', cpErr);
+                showToast('Child created, but clinic linking failed.', 'error');
+            } else {
+                showToast('Child added successfully!', 'success');
+            }
+        } else {
+            showToast('Child added successfully!', 'success');
         }
 
-        showToast('Child added successfully!', 'success');
         closeAddChildModal();
         await loadChildren(currentParentId);
 
@@ -464,6 +803,9 @@ function wireModals() {
     document.getElementById('cancel-add-parent').addEventListener('click', closeAddParentModal);
     document.getElementById('save-add-parent').addEventListener('click',   handleSaveParent);
 
+    // Add Child row button inside Add Parent modal
+    document.getElementById('btn-add-child-row').addEventListener('click', addChildRow);
+
     // Tab switching in Add Parent modal
     document.querySelectorAll('#add-parent-modal .p-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -474,11 +816,25 @@ function wireModals() {
         });
     });
 
-    // Add Child modal
+    // Add Child modal (from detail view)
     document.getElementById('btn-add-child').addEventListener('click',    openAddChildModal);
     document.getElementById('close-add-child').addEventListener('click',  closeAddChildModal);
     document.getElementById('cancel-add-child').addEventListener('click', closeAddChildModal);
     document.getElementById('save-add-child').addEventListener('click',   saveNewChild);
+
+    // Existing parent dropdown change → render their children
+    document.getElementById('ep-select').addEventListener('change', (e) => {
+        renderExistingChildren(e.target.value);
+    });
+
+    // Remove parent modal
+    document.getElementById('close-remove-parent').addEventListener('click',  closeRemoveModal);
+    document.getElementById('cancel-remove-parent').addEventListener('click', closeRemoveModal);
+    document.getElementById('confirm-remove-parent').addEventListener('click', confirmRemoveParent);
+    // Click on backdrop to close
+    document.getElementById('remove-parent-modal').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeRemoveModal();
+    });
 }
 
 // ─── HANDLE SAVE PARENT (dispatches based on active tab) ───────────────────
@@ -492,20 +848,25 @@ function handleSaveParent() {
 }
 
 function openAddParentModal() {
-    // Reset form fields
     ['np-name','np-email','np-phone','np-password'].forEach(id => {
         document.getElementById(id).value = '';
     });
     document.getElementById('ep-select').value = '';
-    
-    // Reset to "Create New" tab
+
+    const container = document.getElementById('np-children-container');
+    container.innerHTML = '';
+    childRowCounter = 0;
+    addChildRow();
+
     document.querySelectorAll('#add-parent-modal .p-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('#add-parent-modal .p-tab-panel').forEach(p => p.classList.remove('active'));
     document.querySelector('#add-parent-modal .p-tab[data-tab="new"]').classList.add('active');
     document.getElementById('panel-new').classList.add('active');
 
-    // Reload existing parents dropdown
     loadExistingParentsForDropdown();
+
+    const epWrap = document.getElementById('ep-children-wrap');
+    if (epWrap) epWrap.style.display = 'none';
 
     document.getElementById('add-parent-modal').classList.add('open');
 }
@@ -528,9 +889,15 @@ function closeAddChildModal() {
 }
 
 // ─── HELPERS ───────────────────────────────────────────────────────────────
+function getInitials(name) {
+    if (!name) return '?';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+}
 
-// Calculate age string from ISO date e.g. "4y 5m"
 function calcAge(dobStr) {
+    if (!dobStr) return '—';
     const dob  = new Date(dobStr);
     const now  = new Date();
     let years  = now.getFullYear() - dob.getFullYear();
@@ -541,7 +908,6 @@ function calcAge(dobStr) {
     return months > 0 ? `${years}y ${months}m` : `${years}y`;
 }
 
-// "15 Jan 2024"
 function formatShortDate(isoStr) {
     if (!isoStr) return '—';
     const d = new Date(isoStr);
@@ -549,7 +915,6 @@ function formatShortDate(isoStr) {
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// "15 January 2024"
 function formatLongDate(isoStr) {
     if (!isoStr) return '';
     const d = new Date(isoStr);
@@ -558,7 +923,6 @@ function formatLongDate(isoStr) {
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// Toast notification
 function showToast(msg, type = '') {
     const toast = document.getElementById('p-toast');
     if (!toast) return;

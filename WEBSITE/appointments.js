@@ -5,6 +5,8 @@
      appointment_date (date), appointment_time (time),
      purpose (text), notes (text), status (text), clinicid FK→CLINIC
    Status enum: Scheduled → Completed | Cancelled | No-Show
+   
+   NOTE: Past-date appointments (before today) are hidden from the list.
    ============================================================ */
 
 let allAppointments = [];
@@ -28,9 +30,12 @@ async function loadAppointments() {
     const container = document.getElementById('appointments-container');
     container.innerHTML = `<div style="text-align:center;padding:40px;color:#64748b;">Loading appointments…</div>`;
 
+    // ── Compute today's ISO date (local time, not UTC) ────────────────
+    // Using local date ensures "today" matches the user's timezone.
+    const now = new Date();
+    const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     try {
-        // Query APPOINTMENT joined with USER (parent name) and CHILD (child name)
-        // Ordered ascending so today shows first, then future dates
         let query = window.supabaseClient
             .from('APPOINTMENT')
             .select(`
@@ -45,6 +50,8 @@ async function loadAppointments() {
                 USER   ( full_name ),
                 CHILD  ( full_name )
             `)
+            // ✅ Only show appointments from today onwards (excludes past dates)
+            .gte('appointment_date', todayISO)
             .order('appointment_date', { ascending: true })
             .order('appointment_time', { ascending: true });
 
@@ -67,11 +74,10 @@ function renderByDate(appointments) {
     const container = document.getElementById('appointments-container');
 
     if (appointments.length === 0) {
-        container.innerHTML = `<div style="text-align:center;padding:40px;color:#64748b;">No appointments found.</div>`;
+        container.innerHTML = `<div style="text-align:center;padding:40px;color:#64748b;">No upcoming appointments found.</div>`;
         return;
     }
 
-    // Group appointments by appointment_date (ISO string)
     const groups = {};
     appointments.forEach(appt => {
         const key = appt.appointment_date || 'Unknown';
@@ -79,7 +85,10 @@ function renderByDate(appointments) {
         groups[key].push(appt);
     });
 
-    const todayISO = new Date().toISOString().split('T')[0];
+    // Today ISO in local time
+    const now = new Date();
+    const todayISO = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
     container.innerHTML = '';
 
     Object.entries(groups).forEach(([dateKey, appts]) => {
@@ -126,18 +135,18 @@ function buildRow(appt) {
     const childName  = appt.CHILD ? appt.CHILD.full_name : '—';
     const parentName = appt.USER  ? appt.USER.full_name  : '—';
     const purpose    = appt.purpose || '—';
-    const rawStatus  = (appt.status || 'Scheduled').trim();
+
+    // Raw status from DB — already in correct enum format: Scheduled | Completed | Cancelled | No-Show
+    const rawStatus   = (appt.status || 'Scheduled').trim();
     const lowerStatus = rawStatus.toLowerCase();
 
     // Terminal statuses — no further update needed
     const isTerminal = ['completed', 'cancelled', 'no-show'].includes(lowerStatus);
 
-    // Status pill
     const pillClass  = getStatusPillClass(lowerStatus);
     const statusPill = `<span class="appt-status-pill ${pillClass}">${rawStatus}</span>`;
 
     // Update dropdown — only shown for non-terminal statuses
-    // Enum: Scheduled → Completed | Cancelled | No-Show
     const updateCell = isTerminal
         ? `<span class="update-dash">—</span>`
         : `<select class="update-select" onchange="updateStatus(${appt.appid}, this.value, this)">
@@ -147,7 +156,6 @@ function buildRow(appt) {
                <option value="No-Show">No-Show</option>
            </select>`;
 
-    // Notes button — "View" if notes exist, "Add" if empty
     const hasNotes = appt.notes && appt.notes.trim().length > 0;
     const notesBtn = `
         <button class="notes-btn"
@@ -189,7 +197,6 @@ function esc(str) {
 }
 
 // ─── Update appointment status inline ─────────────────────────────────────
-// Updates APPOINTMENT.status in Supabase, then updates DOM without full reload
 async function updateStatus(appId, newStatus, selectEl) {
     if (!newStatus) return;
     selectEl.disabled = true;
@@ -206,13 +213,11 @@ async function updateStatus(appId, newStatus, selectEl) {
         const pillClass = getStatusPillClass(lower);
         const isTerminal = ['completed', 'cancelled', 'no-show'].includes(lower);
 
-        // Update status pill cell
         const statusCell = document.getElementById(`status-cell-${appId}`);
         if (statusCell) {
             statusCell.innerHTML = `<span class="appt-status-pill ${pillClass}">${newStatus}</span>`;
         }
 
-        // Replace update dropdown with "—" for terminal statuses
         const updateCell = document.getElementById(`update-cell-${appId}`);
         if (updateCell && isTerminal) {
             updateCell.innerHTML = `<span class="update-dash">—</span>`;
@@ -221,7 +226,6 @@ async function updateStatus(appId, newStatus, selectEl) {
             selectEl.value = '';
         }
 
-        // Sync local data
         const local = allAppointments.find(a => a.appid === appId);
         if (local) local.status = newStatus;
 
@@ -245,7 +249,6 @@ function openNotesModal(appId, childName, apptDate) {
 
     const existingContainer = document.getElementById('notes-existing-container');
     if (existingNotes) {
-        // Show the existing notes with date as meta header
         existingContainer.innerHTML = `
             <div class="notes-existing">
                 <div class="notes-existing-meta">${apptDate}</div>
@@ -269,14 +272,12 @@ async function saveNotes() {
     const btn     = document.getElementById('save-notes-btn');
     const newNote = document.getElementById('notes-textarea').value.trim();
 
-    // Nothing typed — just close
     if (!newNote) { closeNotesModal(); return; }
 
     btn.disabled    = true;
     btn.textContent = 'Saving…';
 
     try {
-        // Append to existing APPOINTMENT.notes or set fresh
         const appt     = allAppointments.find(a => a.appid === currentNotesApptId);
         const existing = (appt && appt.notes) ? appt.notes.trim() : '';
         const combined = existing ? `${existing}\n\n${newNote}` : newNote;
@@ -288,7 +289,6 @@ async function saveNotes() {
 
         if (error) throw error;
 
-        // Update local cache
         if (appt) appt.notes = combined;
         showToast('Notes saved.', 'success');
         closeNotesModal();
@@ -311,7 +311,6 @@ async function loadParentsForDropdown() {
             .ilike('role', 'parent')
             .order('full_name', { ascending: true });
 
-        // Narrow to clinic patients if clinicId is known
         if (clinicId) {
             const { data: cp } = await window.supabaseClient
                 .from('CLINIC_PATIENT')
@@ -376,17 +375,17 @@ async function saveNewAppointment() {
     btn.textContent = 'Adding…';
 
     try {
+        // Status MUST be 'Scheduled' (capital S) per Android enum AppointmentStatus.SCHEDULED("Scheduled")
         const payload = {
             appointment_date: date,
             appointment_time: time,
             parentid: parseInt(parentId, 10),
             childid:  parseInt(childId,  10),
             purpose:  purpose || null,
-            status:   'Scheduled'   // new appointments start as Scheduled
+            status:   'Scheduled'   // ✅ Correct enum value
         };
         if (clinicId) payload.clinicid = clinicId;
 
-        // INSERT appointment and get back the new appid so we can link the notification
         const { data: newApptRows, error } = await window.supabaseClient
             .from('APPOINTMENT')
             .insert([payload])
@@ -396,29 +395,18 @@ async function saveNewAppointment() {
         const newAppId = newApptRows && newApptRows[0] ? newApptRows[0].appid : null;
 
         // ── Insert NOTIFICATION to alert the parent ───────────────────────
-        // NOTIFICATION columns used:
-        //   userid      → parentid  (the parent who booked / owns the child)
-        //   childid     → childid   (which child the appointment is for)
-        //   appid       → newAppId  (FK back to the new APPOINTMENT row)
-        //   clinicid    → clinicId  (the clinic that created it)
-        //   title       → short heading shown in the app notification
-        //   message     → full body text
-        //   type        → 'appointment' (used by the app to categorise)
-        //   is_read     → false  (unread; Android NotificationSyncManager picks this up)
         if (newAppId) {
-            // Resolve child name for the message text
             const parent   = parentsData.find(p => p.userid == parentId);
             const child    = parent && parent.CHILD
                 ? parent.CHILD.find(c => c.childid == childId)
                 : null;
             const childName  = child ? child.full_name : 'your child';
 
-            // Format date nicely: "Mon, 7 Sept 2026"
             const d       = new Date(date + 'T00:00:00');
             const days    = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
             const months  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
             const dateLabel = `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
-            const timeLabel = time.slice(0, 5);  // "HH:MM"
+            const timeLabel = time.slice(0, 5);
 
             const purposeLabel = purpose || 'General Appointment';
 
@@ -428,12 +416,11 @@ async function saveNewAppointment() {
                 appid:    newAppId,
                 title:    'Appointment Scheduled',
                 message:  `An appointment has been scheduled for ${childName} on ${dateLabel} at ${timeLabel} — ${purposeLabel}.`,
-                type:     'appointment',
+                type:     'appointment',   // lowercase type label (not an enum)
                 is_read:  false
             };
             if (clinicId) notifPayload.clinicid = clinicId;
 
-            // Non-blocking: if notification insert fails, we still show success for the appointment
             window.supabaseClient.from('NOTIFICATION').insert([notifPayload])
                 .then(({ error: nErr }) => {
                     if (nErr) console.warn('Notification insert failed (appointment still saved):', nErr);
@@ -455,19 +442,16 @@ async function saveNewAppointment() {
 
 // ─── Modal wiring ──────────────────────────────────────────────────────────
 function wireModals() {
-    // Add appointment modal
     document.getElementById('btn-add-appt').addEventListener('click',    openAddModal);
     document.getElementById('close-add-modal').addEventListener('click', closeAddModal);
     document.getElementById('cancel-add-modal').addEventListener('click',closeAddModal);
     document.getElementById('save-add-appt').addEventListener('click',   saveNewAppointment);
     document.getElementById('new-appt-parent').addEventListener('change',onParentChange);
 
-    // Notes modal
     document.getElementById('close-notes-modal').addEventListener('click',  closeNotesModal);
     document.getElementById('close-notes-footer').addEventListener('click',  closeNotesModal);
     document.getElementById('save-notes-btn').addEventListener('click',      saveNotes);
 
-    // Set defaults
     document.getElementById('new-appt-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('new-appt-time').value = '09:00';
 }
@@ -498,7 +482,6 @@ function showToast(msg, type = '') {
 }
 
 // ─── Date label formatter ──────────────────────────────────────────────────
-// e.g. "2026-09-07" → "Mon, 7 Sept"
 function formatDateLabel(dateStr) {
     if (!dateStr || dateStr === 'Unknown') return 'Unknown Date';
     const d      = new Date(dateStr + 'T00:00:00');

@@ -8,24 +8,21 @@
  *  CHILD            – children (childid, full_name, date_of_birth, parent_id)
  *  USER             – users / parents (userid, full_name)
  *
- * Statuses stored in CHILD_VACCINE.status (case-insensitive match):
- *   completed | scheduled | due | overdue | skipped
+ * Statuses stored in CHILD_VACCINE.status (exact case match with Android VaccineStatusEnum):
+ *   Scheduled | Due | Completed | Overdue | Skipped
  */
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // ── State ────────────────────────────────────────────────────────────────
-    let allVaccines   = [];   // master vaccine list, sorted by recommended_age_weeks
-    let allChildren   = [];   // enriched child records (with childVaccineMap)
-    let filteredRows  = [];   // currently displayed rows (after search/filter)
-    let adminLog      = [];   // administration log entries
+    let allVaccines   = [];
+    let allChildren   = [];
+    let filteredRows  = [];
+    let adminLog      = [];
     let activeFilter  = 'all';
-    let editCtx       = null; // { childvaccineid, childid, vaccineid, childName, vaccineName }
+    let editCtx       = null;
 
-    // ── Boot ─────────────────────────────────────────────────────────────────
     loadData();
 
-    // ── Filter tabs ──────────────────────────────────────────────────────────
     document.querySelectorAll('.filter-tab').forEach(tab => {
         tab.addEventListener('click', e => {
             document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
@@ -35,10 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ── Search ───────────────────────────────────────────────────────────────
     document.getElementById('search-input').addEventListener('input', applyFilters);
 
-    // ── Modal close ──────────────────────────────────────────────────────────
     document.getElementById('modal-cancel').addEventListener('click', closeModal);
     document.getElementById('edit-modal').addEventListener('click', e => {
         if (e.target === e.currentTarget) closeModal();
@@ -54,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let session  = JSON.parse(localStorage.getItem('carelyo_admin_session') || '{}');
             let clinicId = session.clinicid || (session.clinic ? session.clinic.clinicid : null);
 
-            // Resolve clinicId from CLINIC_STAFF if not yet cached in session
             if (!clinicId && session.userid && window.supabaseClient) {
                 try {
                     const { data: staffData } = await window.supabaseClient
@@ -82,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (vErr) throw vErr;
             allVaccines = vaccines || [];
 
-            // 2. Children registered at this clinic (with parent name)
+            // 2. Children registered at this clinic
             let childQuery = window.supabaseClient
                 .from('CHILD')
                 .select(`
@@ -92,9 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `)
                 .order('full_name', { ascending: true });
 
-            // If clinic-scoped, filter by clinic's children
             if (clinicId) {
-                // Primary: use CLINIC_PATIENT
                 const { data: cpRows } = await window.supabaseClient
                     .from('CLINIC_PATIENT')
                     .select('childid')
@@ -104,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ids = cpRows.map(r => r.childid);
                     childQuery = childQuery.in('childid', ids);
                 } else {
-                    // Fallback: derive child IDs from APPOINTMENT if CLINIC_PATIENT has no rows yet
                     const { data: apptRows } = await window.supabaseClient
                         .from('APPOINTMENT')
                         .select('childid')
@@ -114,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         const ids = [...new Set(apptRows.map(r => r.childid).filter(Boolean))];
                         childQuery = childQuery.in('childid', ids);
                     } else {
-                        // No children found for this clinic at all — return empty
                         childQuery = childQuery.in('childid', [-1]);
                     }
                 }
@@ -125,7 +115,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 3. Enrich children
             allChildren = (children || []).map(child => {
-                // Build a map: vaccineid → child_vaccine record
                 const cvMap = {};
                 (child.CHILD_VACCINE || []).forEach(cv => {
                     cvMap[cv.vaccineid] = cv;
@@ -135,10 +124,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return { ...child, cvMap, parentName };
             });
 
-            // 4. Build admin log  (completed entries with a date)
+            // 4. Build admin log
             adminLog = [];
             allChildren.forEach(child => {
                 Object.values(child.cvMap).forEach(cv => {
+                    // Only include 'Completed' (capital C) with a date
                     if ((cv.status || '').toLowerCase() === 'completed' && cv.administered_date) {
                         const vac = allVaccines.find(v => v.vaccineid === cv.vaccineid);
                         adminLog.push({
@@ -148,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             time         : cv.administered_at
                                 ? new Date(cv.administered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                 : '—',
-                            administeredBy : cv.notes || '—',   // notes used as "administered by" if available
+                            administeredBy : cv.notes || '—',
                             batchNo       : '—',
                         });
                     }
@@ -156,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             adminLog.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-            // 5. Render
             buildTableHeader();
             applyFilters();
             renderAdminLog();
@@ -178,7 +167,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const nameRow = document.getElementById('vac-thead-name');
         const ageRow  = document.getElementById('vac-thead-age');
 
-        // Child column
         let nameHtml = '<th class="child-col">Child</th>';
         let ageHtml  = '<th class="child-col"></th>';
 
@@ -187,7 +175,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ageHtml  += `<th>${formatAge(v.recommended_age_weeks)}</th>`;
         });
 
-        // Progress column
         nameHtml += '<th class="progress-col">Progress</th>';
         ageHtml  += '<th class="progress-col"></th>';
 
@@ -203,18 +190,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const searchQ = (document.getElementById('search-input').value || '').toLowerCase().trim();
 
         filteredRows = allChildren.filter(child => {
-            // Search
             if (searchQ) {
                 const cn = (child.full_name   || '').toLowerCase();
                 const pn = (child.parentName  || '').toLowerCase();
                 if (!cn.includes(searchQ) && !pn.includes(searchQ)) return false;
             }
 
-            // Status filter (based on any vaccine in that child having that status)
             if (activeFilter !== 'all') {
                 const statuses = Object.values(child.cvMap).map(cv => (cv.status || '').toLowerCase());
                 if (activeFilter === 'completed') {
-                    // All vaccines completed
                     const completedCount = statuses.filter(s => s === 'completed').length;
                     return completedCount === allVaccines.length;
                 }
@@ -269,34 +253,36 @@ document.addEventListener('DOMContentLoaded', () => {
             const dotCells = allVaccines.map(v => {
                 const cv = child.cvMap[v.vaccineid];
                 if (!cv) {
-                    // No record yet – show as scheduled/empty
+                    // No record yet — default to "Scheduled" (capital S per enum)
                     return `<td><span class="cell-dot scheduled"
                         data-childvaccineid=""
                         data-childid="${child.childid}"
                         data-vaccineid="${v.vaccineid}"
                         data-childname="${escAttr(child.full_name)}"
                         data-vaccinename="${escAttr(v.vaccine_name)}"
-                        data-status="scheduled"
+                        data-status="Scheduled"
                         title="${escAttr(v.vaccine_name)} – Not recorded"
                         ></span></td>`;
                 }
 
-                const status = (cv.status || 'scheduled').toLowerCase();
-                if (status === 'completed') completedCount++;
-                if (status === 'due')      hasDue = true;
-                if (status === 'overdue')  hasOverdue = true;
+                // status stored as "Scheduled" | "Due" | "Completed" | "Overdue" | "Skipped"
+                const rawStatus   = (cv.status || 'Scheduled').trim();
+                const lowerStatus = rawStatus.toLowerCase();
+                if (lowerStatus === 'completed') completedCount++;
+                if (lowerStatus === 'due')      hasDue = true;
+                if (lowerStatus === 'overdue')  hasOverdue = true;
 
                 const dateStr = cv.administered_date || '';
                 const tipDate = dateStr ? `\nDate: ${dateStr}` : '';
-                const tip     = `${escAttr(v.vaccine_name)} – ${capitalize(status)}${tipDate}`;
+                const tip     = `${escAttr(v.vaccine_name)} – ${rawStatus}${tipDate}`;
 
-                return `<td><span class="cell-dot ${status}"
+                return `<td><span class="cell-dot ${lowerStatus}"
                     data-childvaccineid="${cv.childvaccineid}"
                     data-childid="${child.childid}"
                     data-vaccineid="${v.vaccineid}"
                     data-childname="${escAttr(child.full_name)}"
                     data-vaccinename="${escAttr(v.vaccine_name)}"
-                    data-status="${status}"
+                    data-status="${lowerStatus}"
                     data-date="${dateStr}"
                     data-notes="${escAttr(cv.notes || '')}"
                     title="${tip}"
@@ -322,7 +308,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
         }).join('');
 
-        // Attach click handlers to all dots
         tbody.querySelectorAll('.cell-dot').forEach(dot => {
             dot.addEventListener('click', () => openModal(dot));
         });
@@ -381,9 +366,21 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveStatus() {
         if (!editCtx) return;
 
-        const status = document.getElementById('modal-status').value;
-        const date   = document.getElementById('modal-date').value   || null;
-        const notes  = document.getElementById('modal-notes').value  || null;
+        // The <select> options must have values matching the enum exactly:
+        // Scheduled | Due | Completed | Overdue | Skipped
+        const rawStatus = document.getElementById('modal-status').value;
+        const date      = document.getElementById('modal-date').value   || null;
+        const notes     = document.getElementById('modal-notes').value  || null;
+
+        // Map lowercase select value to exact enum casing
+        const statusMap = {
+            'scheduled': 'Scheduled',
+            'due':       'Due',
+            'completed': 'Completed',
+            'overdue':   'Overdue',
+            'skipped':   'Skipped',
+        };
+        const status = statusMap[rawStatus.toLowerCase()] || 'Scheduled';
 
         const saveBtn = document.getElementById('modal-save');
         saveBtn.disabled = true;
@@ -393,21 +390,19 @@ document.addEventListener('DOMContentLoaded', () => {
             const payload = {
                 childid            : editCtx.childid,
                 vaccineid          : editCtx.vaccineid,
-                status             : status,
-                administered_date  : (status === 'completed' && date) ? date : null,
-                administered_at    : (status === 'completed' && date) ? new Date(date).toISOString() : null,
+                status             : status,   // ✅ Exact enum value
+                administered_date  : (status === 'Completed' && date) ? date : null,
+                administered_at    : (status === 'Completed' && date) ? new Date(date).toISOString() : null,
                 notes              : notes,
             };
 
             let error;
             if (editCtx.childvaccineid) {
-                // Update existing record
                 ({ error } = await window.supabaseClient
                     .from('CHILD_VACCINE')
                     .update(payload)
                     .eq('childvaccineid', editCtx.childvaccineid));
             } else {
-                // Insert new record
                 ({ error } = await window.supabaseClient
                     .from('CHILD_VACCINE')
                     .insert(payload));
@@ -416,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
 
             closeModal();
-            await loadData(); // Refresh everything
+            await loadData();
 
         } catch (err) {
             console.error('Save error:', err);
